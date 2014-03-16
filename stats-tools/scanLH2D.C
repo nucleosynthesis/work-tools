@@ -9,20 +9,25 @@ void scanLH2D(std::string outname="scanLH-cont.root",std::string x="RF", std::st
   gD->SetMarkerStyle(34);
   gD->SetMarkerSize(2.0);
   int n = limit->GetEntries();
-  float rV,rF,deltaNLL;
+  float rV,rF,deltaNLL,quant;
 
   limit->SetBranchAddress(y.c_str(),&rV);
   limit->SetBranchAddress(x.c_str(),&rF);
-  limit->SetBranchAddress("quantileExpected",&deltaNLL);
+  limit->SetBranchAddress("deltaNLL",&deltaNLL);
+  limit->SetBranchAddress("quantileExpected",&quant);
   
   int c=0;
+  bool datanotfound = true;
   for (int i=0;i<n;i++){
    limit->GetEntry(i);
-   if (deltaNLL==1 ) {
+   if (quant==1 ) {
+	if (!datanotfound) continue;
 	std::cout << rV << " "<<rF <<std::endl;
 	gD->SetPoint(0,rF,rV,1);
-   } else {
-        g->SetPoint(c,rF,rV,deltaNLL);c++;
+	datanotfound=false;
+   } else if (quant >-1){
+	std::cout << rV << " "<<rF <<std::endl;
+        g->SetPoint(c,rF,rV,2*deltaNLL);c++;
    }
 
   }

@@ -12,7 +12,7 @@ RooStats::ModelConfig *mc_s;
 
 TGraph *graphLH(std::string nuisname, double err ){
 
-	w->loadSnapshot("bestfitall"); // SetTo BestFit values as start
+	w->loadSnapshot("MultiDimFit"); // SetTo BestFit values as start
 
 	// Get The parameter we want 
 	RooRealVar *nuis =(RooRealVar*) w->var(nuisname.c_str());
@@ -30,19 +30,19 @@ TGraph *graphLH(std::string nuisname, double err ){
 	gr->SetTitle("");
 	gr->GetYaxis()->SetTitle("NLL - obs data");
 	gr->GetYaxis()->SetTitleOffset(1.1);
-	gr->GetXaxis()->SetTitleSize(0.05);
-	gr->GetYaxis()->SetTitleSize(0.05);
+	gr->GetXaxis()->SetTitleSize(0.035);
+	gr->GetYaxis()->SetTitleSize(0.04);
 	gr->GetXaxis()->SetTitle(nuisname.c_str());
 	gr->SetLineColor(4);
 	gr->SetLineWidth(2);
 	gr->SetMarkerStyle(21);
 	gr->SetMarkerSize(0.6);
-	
+ 	std::cout << " Constructed NLL for " << nuisname << std::endl;	
 	return gr;
 	
 }
 
-void checkBestFitPoint(std::string workspace, std::string fitFile){
+void checkBestFitPoint(std::string workspace){
 	
 	// Open the ws file...
 	TFile *fd_=0;
@@ -64,22 +64,25 @@ void checkBestFitPoint(std::string workspace, std::string fitFile){
 		,RooFit::Extended(mc_s->GetPdf()->canBeExtended()));
 	
 	// Now get the best fit result
-	fd_ =  TFile::Open(fitFile.c_str());
-	RooFitResult *fit =(RooFitResult*)fd_->Get("fit_s");
-	RooArgSet fitargs = fit->floatParsFinal();
+	//fd_ =  TFile::Open(fitFile.c_str());
+	//RooFitResult *fit =(RooFitResult*)fd_->Get("fit_s");
+	//RooArgSet fitargs = fit->floatParsFinal();
 	
-	std::cout << "Got the best fit values" <<std::endl;		
-	w->saveSnapshot("bestfitall",fitargs,true);
-	
+	//std::cout << "Got the best fit values" <<std::endl;		
+	//w->saveSnapshot("bestfitall",fitargs,true);
+	RooArgSet *allargs = (RooArgSet*) w->allVars();
+	RooStats::RemoveConstantParameters(allargs);
 	// Now make the plots!	
 	TCanvas *c = new TCanvas("c","",600,600);
 	c->SaveAs(Form("minimum.pdf["));
-
-	TIterator* iter(fitargs->createIterator());
+	
+	TIterator* iter(allargs->createIterator());
         for (TObject *a = iter->Next(); a != 0; a = iter->Next()) {
                  RooRealVar *rrv = dynamic_cast<RooRealVar *>(a);      
                  std::string name = rrv->GetName();
-		 TGraph *gr = graphLH(name,rrv->getError());
+		 double err = 0.5; // guess
+		 if (rrv->getError()) err = rrv->getError();
+		 TGraph *gr = graphLH(name,err);
 		 gr->Draw("ALP");
 		 c->SaveAs(Form("minimum.pdf["));
 	}
