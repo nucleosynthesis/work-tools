@@ -1,31 +1,79 @@
+#!/usr/bin/env python 
+
+# Plots multiple 1D NLL curves from trees (eg like the one from combine)
+# The guess is that these will be NLL curves and hence, will report 1sigma errors, clean max nll, reset to 0 etc
+# Pass tree 
+
 import numpy
 import sys
 import array
 
 from optparse import OptionParser
 parser=OptionParser()
-parser.add_option("-s","--shift",default="1.",type='float',help="with --expected, mve the curve to best fit here")
+parser.add_option("-e","--expected",default=False,action="store_true",help="Run expected")
+parser.add_option("-s","--shift",default="1.",type='float',help="run with --expected, move the curve to best fit here")
 parser.add_option("-b","--batch",default=False,action="store_true",help="dont forward plots")
 parser.add_option("-c","--clean",default=False,action="store_true",help="Spike cleaning if not running absolute NLL")
-parser.add_option("-e","--expected",default=False,action="store_true",help="shift curve to have minimum at options.shift")
 parser.add_option("-p","--points",action="store_true",help="add markers to curve")
-parser.add_option("-r","--result",action="store_true",help="make pretty")
+parser.add_option("-r","--result",action="store_true",help="make pretty result")
+parser.add_option("-v","--verb",action="store_true",help="Put Results in Legend")
+parser.add_option("-V","--VERB",action="store_true",help="spitoutlikelihood")
 parser.add_option("-x","--xvar",default="r",type='str',help="x variable in tree")
 parser.add_option("-o","--outnames",default="",type='str')
+parser.add_option("-m","--makeplot",default=False,action='store_true',help="makes a root file with a graph of the best fit and errors per file")
+parser.add_option("-L","--legend",default=False,action='store_true',help="make a legend with file names")
+parser.add_option("","--runSpline",default=False,action='store_true',help="Create a smoothed spline from input tree to make plot")
+parser.add_option("","--nofile",default=False,action='store_true',help="Remove filename from Legend")
+parser.add_option("","--Title",default="",type='str')
 parser.add_option("","--absNLL",default=False,action='store_true')
-
 parser.add_option("","--xl",default="",type='str')
 parser.add_option("","--xr",default="",type='str')
 parser.add_option("","--yr",default="",type='str')
-parser.add_option("-T","--Title",default="",type='str')
-parser.add_option("","--signif",default=False,action='store_true',help="try to calculate significance")
-parser.add_option("-m","--makeplot",default=False,action='store_true',help="makes a root file with a graph of the best fit and errors per file")
-parser.add_option("-L","--legend",default=False,action='store_true',help="make a legend with file names")
+parser.add_option("","--cl",default="1",type='float')
+parser.add_option("","--coloroffset",default=1,type='int')
+parser.add_option("","--null",default=0.,type='float')
+parser.add_option("","--labels",default="",type='str')
+parser.add_option("","--styles",default="",type='str')
+parser.add_option("","--colors",default="",type='str')
+parser.add_option("","--signif",default=False,action='store_true',help="try to calculate significance ->  sqrt[2(nll(min)-nll(option.null))] ")
 (options,args)=parser.parse_args()
 
+nam = options.outnames if options.outnames else options.xvar
+if options.outnames: outtxt= open("%s.txt"%nam,"w")
+
+if len(options.labels): options.labels=options.labels.split(",")
 import ROOT
+import array
+
 
 ROOT.gROOT.SetBatch(options.batch)
+# Save a tree of all the runs 
+outTreeFile = ROOT.TFile("%s-tree.root"%nam,"RECREATE")
+outTree = ROOT.TTree("restree","restree")
+
+cenV  = array.array('d',[0]) 
+errHV = array.array('d',[0]) 
+errLV = array.array('d',[0]) 
+
+outTree.Branch("%s"%options.xvar,cenV,"%s/D"%options.xvar)
+outTree.Branch("%s_u"%options.xvar,errHV,"%s_u/D"%options.xvar)
+outTree.Branch("%s_d"%options.xvar,errLV,"%s_d/D"%options.xvar)
+
+if options.runSpline: ROOT.gSystem.Load("libHiggsAnalysisCombinedLimit")
+
+def makespline(tr): # r,2nll
+  MIN = tr.GetMinimum(options.xvar) 
+  MAX = tr.GetMaximum(options.xvar)
+  rxv   = ROOT.RooRealVar(options.xvar,options.xvar,MIN,MAX)
+  args = ROOT.RooArgList(rxv)
+  spl   = ROOT.RooSplineND("spl","spl",args,tr,"deltaNLL",0.1,"abs(deltaNLL)>0.0001");
+  res = []
+  for xx in numpy.arange(MIN,MAX,0.1*(MAX-MIN)/tr.GetEntries()):
+    rxv.setVal(xx)
+    res.append([xx,2*spl.getVal()])
+  return res
+
+
 def applyRanges(GR):
   if options.xr:
 	XRANGE=(options.xr).split(":")
@@ -37,7 +85,7 @@ def applyRanges(GR):
 	GR.GetXaxis().SetTitle(options.xl)
 
 def makePlot(c,l,h):
-  fout = ROOT.TFile("errors_out.root","RECREATE")
+  fout = ROOT.TFile("%s_errs.root"%nam,"RECREATE")
   grC = ROOT.TGraphAsymmErrors()
   grE = grC.Clone()
 
@@ -60,14 +108,14 @@ def makePlot(c,l,h):
   fout.Close()
   print "Created file errors_out.root with x +/- sig(x) per point"
 
-
 def findQuantile(pts,cl):
 
 	#gr is a list of r,nll
-        if cl<0 : 
+        if cl<=0 : 
 		minNll = pts[0][1]
 		minP=pts[0][0]
 		for p in pts: 
+		 if p[1]<0 :continue
 		 if p[1]<minNll:
 			minP = p[0]
 			minNll = p[1]
@@ -104,11 +152,13 @@ def findQuantile(pts,cl):
 
 	return min,max
 
-MAXNLL = 25	
+MAXNLL = 35	
 MAXDER = 1.0
+OFFSET=options.coloroffset
 
 lat = ROOT.TLatex()
-lat.SetTextFont(42)
+#lat.SetTextFont(42)
+lat.SetTextSize(0.015)
 lat.SetNDC()
 
 files = args[:]
@@ -120,170 +170,237 @@ highs	= []
 names	= []
 lowers =  []
 uppers =  []
+signifs =  []
 center=0
+extfiles = []
+
+
+if options.colors: COLORS = options.colors.split(",")
+else: COLORS = [i+1+options.coloroffset for i in range(len(files))] 
+if options.styles: STYLES = options.styles.split(",")
+else: STYLES = [1 for i in files]
+
 print "NEW RUN ---------------------------------------//"
+skipFile = False
 for p,fn in enumerate(files):
- f = ROOT.TFile(fn)
- names.append(f.GetName().strip(".root"))
 
- tree = f.Get("limit")
- gr = ROOT.TGraph()
- c=0
- res = []
+ if not len(options.labels) : names.append(fn.strip(".root"))
+ else: names.append(options.labels[p])
+ if ":" not in fn:
+   f = ROOT.TFile(fn)
+   
+   tree = f.Get("limit")
+   gr = ROOT.TGraph()
+   c=0
+   res = []
 
- for i in range(tree.GetEntries()):
-  tree.GetEntry(i)
-  xv = getattr(tree,options.xvar)
-  if 2*tree.deltaNLL ==0 and options.absNLL: continue
-  elif abs(tree.deltaNLL)<0.01 : center = xv 
-  if options.absNLL: res.append([xv,2*tree.absNLL])
-  else :res.append([xv,2*tree.deltaNLL])
+    
 
- res.sort()
+   for i in range(tree.GetEntries()):
+     tree.GetEntry(i)
+     try :
+	  xv = getattr(tree,options.xvar)
+     except :
+	 continue
+	 skipFile = True
+     if tree.deltaNLL ==0 and options.absNLL: continue
+     #if abs(tree.quantileExpected)==1: continue
+     elif abs(tree.deltaNLL)<0.0001 and tree.deltaNLL > 0: 
+     	center = xv
+	cenDNLL = 2*tree.deltaNLL
+     if options.absNLL: res.append([xv,2*tree.absNLL])
+     else :res.append([xv,2*tree.deltaNLL])
 
- # remove weird points again
- rfix = []
- cindex = 0
- for i,r in enumerate(res): 
-    if options.absNLL: rfix.append(r) 
-    else : 
-    	if r[1]<MAXNLL:
-		rfix.append(r) 
+   if skipFile: 
+	  print "Tree has no attribute ", options.xvar
+	  continue
 
- if options.absNLL : cindex = len(rfix)/2
- else :
-    for i,r in enumerate(rfix):
- 	if abs(r[0]-center) <0.001: cindex = i
+   if options.runSpline: 
+     res = makespline(tree)
+     res.append([center,cenDNLL])
+     #put the best fit in 
 
- res = rfix[:]
- # now loop left and right of the " best fit " and remove spikesi
- lhs = rfix[0:cindex]; lhs.reverse()
- rhs= rfix[cindex:-1]
- keeplhs = []
- keeprhs = []
 
- print "Central is at ", center
- for i,lr in enumerate(lhs): 
-   if i==0: 
-   	prev = lr[1]
-	rprev = lr[0]
-	idiff=1
-   else:
-    diff = abs(lr[0]-rprev) 
-    if  not diff > 0: continue
-    if (abs(lr[1]-prev)) > MAXDER: 
-        idiff+=1
-   	continue 
-   print "Keeping LHS point, ", i, lr, idiff, abs(lr[1]-prev)
-   keeplhs.append(lr)
-   prev = lr[1]
-   rprev = lr[0]
-   idiff=1
- keeplhs.reverse()
+   res.sort()
 
- for i,rr in enumerate(rhs):
-   if i==0: 
-   	prev = rr[1]
-	rprev = rr[0]
-	idiff=1
-   else:
-     diff = abs(rr[0]-rprev) 
-     if  not diff > 0: continue
-     if (abs(rr[1]-prev)) > MAXDER: 
-     	idiff+=1
-     	continue 
-   print "Keeping RHS point, ", i, rr, idiff, abs(rr[1]-prev)
-   keeprhs.append(rr)
-   prev = rr[1]
-   rprev = rr[0]
-   idiff=1
+   skipFile=False
+   # remove weird points again
+   rfix = []
+   cindex = 0
+   for i,r in enumerate(res): 
+      if options.absNLL: rfix.append(r) 
+      else : 
+	  if r[1]<MAXNLL:
+		  rfix.append(r) 
 
- rfix = keeplhs+keeprhs
- rkeep = []
- #now try to remove small jagged spikes
- for i,r in enumerate(rfix):
-   if i==0 or i==len(rfix)-1: 
-   	rkeep.append(r)
-   	continue
-   tres = [rfix[i-1][1],r[1],rfix[i+1][1]]
-   mean = float(sum(tres))/3.
-   mdiff = abs(max(tres)-min(tres))
-   if abs(tres[1] - mean) > 0.6*mdiff :continue
-   rkeep.append(r)
- rfix=rkeep[:]
- if options.clean : res = rfix[0:] 
+   if options.absNLL : cindex = len(rfix)/2
+   else :
+      for i,r in enumerate(rfix):
+	  if abs(r[0]-center) <0.001: cindex = i
 
- if len(res)<5:
- 	print "Not enough points in file %d"%p
-	continue
- 	# sys.exit("Not enough points in file %d"%p)
- nllmin = min([r[1] for r in res])
- # reset to 0
+   res = rfix[:]
 
- if not options.absNLL:
-  for i in range(len(res)): res[i][1]-=nllmin
+   # now loop left and right of the " best fit " and remove spikesi
+   lhs = rfix[0:cindex]; lhs.reverse()
+   rhs= rfix[cindex:-1]
+   keeplhs = []
+   keeprhs = []
 
- m,m1 = findQuantile(res,0);
- l,h  = findQuantile(res,1);
+   #print "Central is at ", center
+   for i,lr in enumerate(lhs): 
+     if i==0: 
+	  prev = lr[1]
+	  rprev = lr[0]
+	  idiff=1
+     else:
+      diff = abs(lr[0]-rprev) 
+      if  not diff > 0: continue
+      if (abs(lr[1]-prev)) > MAXDER: 
+	  idiff+=1
+	  continue 
+     #print "Keeping LHS point, ", i, lr, idiff, abs(lr[1]-prev)
+     keeplhs.append(lr)
+     prev = lr[1]
+     rprev = lr[0]
+     idiff=1
+   keeplhs.reverse()
 
- if  options.expected:
-	for r in res: r[0]-=m-options.shift
- 	m,m1 = findQuantile(res,0);
-	l,h  = findQuantile(res,1);
+   for i,rr in enumerate(rhs):
+     if i==0: 
+	  prev = rr[1]
+	  rprev = rr[0]
+	  idiff=1
+     else:
+       diff = abs(rr[0]-rprev) 
+       if  not diff > 0: continue
+       if (abs(rr[1]-prev)) > MAXDER: 
+	  idiff+=1
+	  continue 
+     #print "Keeping RHS point, ", i, rr, idiff, abs(rr[1]-prev)
+     keeprhs.append(rr)
+     prev = rr[1]
+     rprev = rr[0]
+     idiff=1
 
- for r,nll in res:
-	gr.SetPoint(c,r,(nll))
-	c+=1
+   rfix = keeplhs+keeprhs
+   rkeep = []
 
- grs.append(gr.Clone())
+   #now try to remove small jagged spikes
+   for i,r in enumerate(rfix):
+     if i==0 or i==len(rfix)-1: 
+	  rkeep.append(r)
+	  continue
+     tres = [rfix[i-1][1],r[1],rfix[i+1][1]]
+     mean = float(sum(tres))/3.
+     mdiff = abs(max(tres)-min(tres))
+     if abs(tres[1] - mean) > 0.6*mdiff :continue
+     rkeep.append(r)
+   rfix=rkeep[:]
+   if options.clean : res = rfix[0:] 
+
+   if len(res)<5:
+	  print "Not enough points in file %d"%p
+	  continue
+	  # sys.exit("Not enough points in file %d"%p)
+   nllmin = min([r[1] for r in res])
+
+   if nllmin<0: print "Warning, nll Minimum < 0 ?", nllmin
+   #print res
+   #sys.exit()
+   # reset to 0
+   #if not options.absNLL:
+   # for i in range(len(res)): res[i][1]-=nllmin
+
+   m,m1 = findQuantile(res,0);
+   l,h  = findQuantile(res,options.cl);
+
+   if  options.expected:
+	  for r in res: r[0]-=m-options.shift
+	  m,m1 = findQuantile(res,0);
+	  l,h  = findQuantile(res,options.cl);
+
+   for r,nll in res:
+	  gr.SetPoint(c,r,(nll))
+	  if options.VERB : print "at: ", r, nll
+	  c+=1
+ 
+   grs.append(gr.Clone())
+ else : 
+ 	tmpfile = ROOT.TFile.Open(fn.split(":")[0])
+	gr = tmpfile.Get(fn.split(":")[1])
+	res = []
+	XP = ROOT.Double()
+	YP = ROOT.Double()
+ 	for n in range(gr.GetN()) :
+		gr.GetPoint(n,XP,YP);
+		res.append([XP,YP])
+	m,m1 = findQuantile(res,0);
+	l,h  = findQuantile(res,options.cl);
+	extfiles.append(tmpfile)
+        grs.append(gr.Clone())
+
  centres.append(m)
  lows.append(m-l)
  highs.append(h-m)
 
- print "File %d, %s = %g(%g)  -%g +%g"%(p,options.xvar,m,m1,m-l,h-m)
+ print "%s, %s = %g(%g) -%g +%g  (%g %g) "%(names[p],options.xvar,m,m1,m-l,h-m,l,h)
+ if options.outnames: outtxt.write("File %s, %s = %g(%g)  -%g +%g (%g %g) \n"%(fn,options.xvar,m,m1,m-l,h-m,l,h))
+ signif = 0
  if options.signif: 
-	nll0 = gr.Eval(0)
+	nll0 = gr.Eval(options.null)
 	nllbf = gr.Eval(m)
 	signif = (nll0-nllbf)**0.5
-	print ".. significance (pval) = ", signif,ROOT.RooStats.SignificanceToPValue(signif)
+	print ".. significance (pval) from %g = "%options.null, signif,ROOT.RooStats.SignificanceToPValue(signif)
+	if options.outnames: outtxt.write(".. significance (pval) from %g = \n"%options.null, signif,ROOT.RooStats.SignificanceToPValue(signif))
+
+ cenV[0] = m
+ errHV[0]  = h-m
+ errLV[0]  = m-l
  lowers.append(l)
  uppers.append(h)
+ signifs.append(signif)
+ outTree.Fill()
 
 if options.makeplot: 
   makePlot(centres,lows,highs)
 
+
+
+# Now make the plot of the curve
 c = ROOT.TCanvas("c","c",600,600)
 c.SetGridx()
 c.SetGridy()
-
 
 grs[0].GetXaxis().SetTitle("%s"%options.xvar)
 grs[0].GetYaxis().SetTitle("-2#Delta Ln(L)")
 grs[0].GetYaxis().SetTitleOffset(1.2)
 
-leg = ROOT.TLegend(0.35,0.7,0.55,0.89)
+leg = ROOT.TLegend(0.05,0.72,0.99,0.98)
 leg.SetTextFont(42)
-leg.SetTextSize(0.035)
+leg.SetTextSize(0.03)
 leg.SetFillColor(0)
+#leg.SetBorderSize(0)
 
 allLinesL = []
 allLinesU = []
-
+allExtLines = []
 drstring=""
 
 if options.points:drstring+="P"
 for j,gr in enumerate(grs):
- leg.AddEntry(gr,names[j],"L")
- if j+1 == 10:
-   gr.SetLineColor(50)
-   gr.SetMarkerColor(50)
- else:
-   gr.SetLineColor(j+1)
-   gr.SetMarkerColor(j+1)
+ #COLOR = j+OFFSET
+ #if j+1 == 10: OFFSET+=10
+ COLOR = int(COLORS[j])
+ STYLE = int(STYLES[j])
+ if COLOR >= 10 : COLOR+=1
+ gr.SetLineColor(COLOR)
+ gr.SetMarkerColor(COLOR)
  gr.SetLineWidth(2)
+ gr.SetLineStyle(STYLE)
+ gr.SetTitle("")
  if options.points: 
-       if j+1 == 10: gr.SetMarkerColor(50)
-       else: gr.SetMarkerColor(j+1)
+       gr.SetMarkerColor(COLOR)
+       gr.SetMarkerColor(COLOR)
        gr.SetMarkerStyle(20)
        gr.SetMarkerSize(0.85)
  if j==0:
@@ -294,15 +411,34 @@ for j,gr in enumerate(grs):
  # add +1 Lines 
  ll = ROOT.TLine(lowers[j],0,lowers[j],gr.Eval(lowers[j]))
  lh = ROOT.TLine(uppers[j],0,uppers[j],gr.Eval(uppers[j]))
- ll.SetLineColor(j+1)
- ll.SetLineStyle(1)
+ ll.SetLineColor(COLOR)
+ ll.SetLineStyle(STYLE)
+ lh.SetLineStyle(STYLE)
  ll.SetLineWidth(2)
- lh.SetLineColor(j+1)
+ lh.SetLineColor(COLOR)
  lh.SetLineWidth(2) 
  allLinesL.append(ll.Clone())
  allLinesU.append(lh.Clone())
  allLinesL[j].Draw()
  allLinesU[j].Draw()
+ if options.signif:
+   lsig = ROOT.TLine(options.null,0,options.null,gr.GetYaxis().GetXmax())
+   lsig.SetLineColor(1)
+   lsig.SetLineStyle(STYLE)
+   lsig.SetLineWidth(2)
+   allExtLines.append(lsig)
+   allExtLines[-1].Draw()
+
+ if options.verb:
+ 	#fname = (( (names[j].split("/"))[-1] ).split('.'))[0]
+
+ 	fname = names[j]
+	if options.nofile: fname = ''
+ 	if options.signif:
+	 leg.AddEntry(gr,"%s, %s=%.3f^{-%.3f}_{+%.3f} (%.1f#sigma)"%(fname ,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j],signifs[j]),"L")
+ 	else:
+	 leg.AddEntry(gr,"%s, %s=%.3f -%.3f +%.3f"%( fname,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j]),"L")
+ else: leg.AddEntry(gr,names[j],"L")
 
 if options.legend: leg.Draw()
 
@@ -310,9 +446,13 @@ if len(grs)==1:
  allLinesL[0].SetLineColor(2)
  allLinesU[0].SetLineColor(2)
 
+LL = ROOT.TLine(gr.GetXaxis().GetXmin(),options.cl,gr.GetXaxis().GetXmax(),options.cl); LL.SetLineColor(2); LL.SetLineWidth(2)
+#allLinesLL.append(LL.Clone)
+LL.Draw()
+
 if len(options.Title)>0:
   print "Add title"
-  lat.SetTextSize(0.035)
+  lat.SetTextSize(0.025)
   lat.DrawLatex(0.1,0.92,"%s"%options.Title)
 
 if options.result:
@@ -325,9 +465,12 @@ if options.result:
    lat.DrawLatex(0.1,0.92,"CMS Preliminary")
 
 if options.batch:
-  nam = options.outnames if options.outnames else options.xvar
   c.SaveAs("%s.pdf"%nam)
   c.SaveAs("%s.png"%nam)
   c.SaveAs("%s.C"%nam)
 else:
   raw_input("Done")
+
+outTreeFile.cd()
+outTree.Write()
+print "central+errors Results saved in", outTreeFile.GetName()
