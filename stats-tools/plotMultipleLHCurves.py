@@ -7,6 +7,10 @@
 import numpy
 import sys
 import array
+SANDYLINES = []
+def sandy_callback(option, opt_str,value,parser):
+	print "add ", value
+	SANDYLINES.append(str(value))
 
 from optparse import OptionParser
 parser=OptionParser()
@@ -29,13 +33,19 @@ parser.add_option("","--absNLL",default=False,action='store_true')
 parser.add_option("","--xl",default="",type='str')
 parser.add_option("","--xr",default="",type='str')
 parser.add_option("","--yr",default="",type='str')
+parser.add_option("","--ylabel",default="-2#Delta Log(L)",type='str')
 parser.add_option("","--cl",default="1",type='float')
 parser.add_option("","--coloroffset",default=1,type='int')
 parser.add_option("","--null",default=0.,type='float')
 parser.add_option("","--labels",default="",type='str')
 parser.add_option("","--styles",default="",type='str')
 parser.add_option("","--colors",default="",type='str')
+parser.add_option("","--dnll",default="",type='str')
+parser.add_option("","--relative",default="",type=str)
+parser.add_option("","--cut",default="",type='str')
 parser.add_option("","--signif",default=False,action='store_true',help="try to calculate significance ->  sqrt[2(nll(min)-nll(option.null))] ")
+parser.add_option("","--line",type='string',action='callback',callback=sandy_callback)
+parser.add_option("","--lumilab",type='string',default="")
 (options,args)=parser.parse_args()
 
 nam = options.outnames if options.outnames else options.xvar
@@ -60,6 +70,15 @@ outTree.Branch("%s_u"%options.xvar,errHV,"%s_u/D"%options.xvar)
 outTree.Branch("%s_d"%options.xvar,errLV,"%s_d/D"%options.xvar)
 
 if options.runSpline: ROOT.gSystem.Load("libHiggsAnalysisCombinedLimit")
+
+def makeRelative(gr, value): 
+  rel_val = gr.Eval(value)
+  x = ROOT.Double()
+  y = ROOT.Double()
+  if rel_val == 0 : return
+  for pt in range(gr.GetN()):
+    gr.GetPoint(pt,x,y)
+    gr.SetPoint(pt,x,y/rel_val)
 
 def makespline(tr): # r,2nll
   MIN = tr.GetMinimum(options.xvar) 
@@ -176,7 +195,7 @@ extfiles = []
 
 
 if options.colors: COLORS = options.colors.split(",")
-else: COLORS = [i+1+options.coloroffset for i in range(len(files))] 
+else: COLORS = [i+options.coloroffset for i in range(len(files))] 
 if options.styles: STYLES = options.styles.split(",")
 else: STYLES = [1 for i in files]
 
@@ -191,10 +210,10 @@ for p,fn in enumerate(files):
    
    tree = f.Get("limit")
    gr = ROOT.TGraph()
+   grEXT = [ROOT.TGraph() for SS in SANDYLINES]
    c=0
    res = []
 
-    
 
    for i in range(tree.GetEntries()):
      tree.GetEntry(i)
@@ -203,13 +222,25 @@ for p,fn in enumerate(files):
      except :
 	 continue
 	 skipFile = True
-     if tree.deltaNLL ==0 and options.absNLL: continue
+     
+     skipPoint=False
+     if options.cut!="": 
+       for cuts in options.cut.split(","):
+         cuts = cuts.split(":")
+	 print cuts
+         if abs( getattr(tree,cuts[0]) - float(cuts[1])) > 0.001: 
+	   skipPoint=True
+     if skipPoint: continue
+     if options.dnll!="": dnll = getattr(tree,options.dnll)
+     else: dnll = 2*tree.deltaNLL 
+     if dnll==0 and options.absNLL: continue
      #if abs(tree.quantileExpected)==1: continue
-     elif abs(tree.deltaNLL)<0.0001 and tree.deltaNLL > 0: 
+     elif abs(dnll)<0.0001 and dnll > 0: 
      	center = xv
-	cenDNLL = 2*tree.deltaNLL
+	cenDNLL = dnll
      if options.absNLL: res.append([xv,2*tree.absNLL])
-     else :res.append([xv,2*tree.deltaNLL])
+     else :res.append([xv,dnll])
+     for jj in range(len(SANDYLINES)): grEXT[jj].SetPoint(i,xv,getattr(tree,'%s'%SANDYLINES[jj]))
 
    if skipFile: 
 	  print "Tree has no attribute ", options.xvar
@@ -361,9 +392,13 @@ for p,fn in enumerate(files):
  signifs.append(signif)
  outTree.Fill()
 
+# Now set the graphs relative to some point if requested 
+if options.relative!="": 
+  for j,gr in enumerate(grs):
+   makeRelative(gr,float(options.relative))
+
 if options.makeplot: 
   makePlot(centres,lows,highs)
-
 
 
 # Now make the plot of the curve
@@ -372,10 +407,11 @@ c.SetGridx()
 c.SetGridy()
 
 grs[0].GetXaxis().SetTitle("%s"%options.xvar)
-grs[0].GetYaxis().SetTitle("-2#Delta Ln(L)")
+grs[0].GetYaxis().SetTitle("%s"%options.ylabel)
 grs[0].GetYaxis().SetTitleOffset(1.2)
 
-leg = ROOT.TLegend(0.05,0.72,0.99,0.98)
+if options.result: leg = ROOT.TLegend(0.6,0.77,0.89,0.89)
+else:leg = ROOT.TLegend(0.05,0.72,0.99,0.98)
 leg.SetTextFont(42)
 leg.SetTextSize(0.03)
 leg.SetFillColor(0)
@@ -398,6 +434,10 @@ for j,gr in enumerate(grs):
  gr.SetLineWidth(2)
  gr.SetLineStyle(STYLE)
  gr.SetTitle("")
+ for jj in range(len(SANDYLINES)): 
+ 	grEXT[jj].SetMarkerColor(COLOR)
+ 	grEXT[jj].SetMarkerStyle(20+jj)
+ 	grEXT[jj].SetMarkerSize(0.9)
  if options.points: 
        gr.SetMarkerColor(COLOR)
        gr.SetMarkerColor(COLOR)
@@ -408,6 +448,7 @@ for j,gr in enumerate(grs):
        gr.Draw("AL"+drstring)
  else : gr.Draw("L"+drstring)
 
+ for jj in range(len(SANDYLINES)): grEXT[jj].Draw("p") 
  # add +1 Lines 
  ll = ROOT.TLine(lowers[j],0,lowers[j],gr.Eval(lowers[j]))
  lh = ROOT.TLine(uppers[j],0,uppers[j],gr.Eval(uppers[j]))
@@ -419,8 +460,8 @@ for j,gr in enumerate(grs):
  lh.SetLineWidth(2) 
  allLinesL.append(ll.Clone())
  allLinesU.append(lh.Clone())
- allLinesL[j].Draw()
- allLinesU[j].Draw()
+ #allLinesL[j].Draw()
+ #allLinesU[j].Draw()
  if options.signif:
    lsig = ROOT.TLine(options.null,0,options.null,gr.GetYaxis().GetXmax())
    lsig.SetLineColor(1)
@@ -439,6 +480,8 @@ for j,gr in enumerate(grs):
  	else:
 	 leg.AddEntry(gr,"%s, %s=%.3f -%.3f +%.3f"%( fname,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j]),"L")
  else: leg.AddEntry(gr,names[j],"L")
+ 
+ for jj in range(len(SANDYLINES)): leg.AddEntry(grEXT[jj],SANDYLINES[jj],"p")
 
 if options.legend: leg.Draw()
 
@@ -447,7 +490,7 @@ if len(grs)==1:
  allLinesU[0].SetLineColor(2)
 
 LL = ROOT.TLine(gr.GetXaxis().GetXmin(),options.cl,gr.GetXaxis().GetXmax(),options.cl); LL.SetLineColor(2); LL.SetLineWidth(2)
-#allLinesLL.append(LL.Clone)
+LL.SetLineStyle(2)
 LL.Draw()
 
 if len(options.Title)>0:
@@ -459,10 +502,14 @@ if options.result:
    c.SetGridx(0) 
    c.SetGridy(0) 
    lat.SetTextSize(0.045)
+   lat.SetTextFont(42)
    var = options.xl if options.xl else options.xvar
-   lat.DrawLatex(0.4,0.7,"%s = %.2f^{+%.2f}_{-%.2f}"%(var,centres[0],uppers[0]-centres[0],centres[0]-lowers[0]))
+   if options.verb: lat.DrawLatex(0.5,0.8,"%s = %.2f^{+%.2f}_{-%.2f}"%(var,centres[0],uppers[0]-centres[0],centres[0]-lowers[0]))
    lat.SetTextSize(0.035)
-   lat.DrawLatex(0.1,0.92,"CMS Preliminary")
+   lat.DrawLatex(0.1,0.92,"#bf{CMS} #it{Preliminary}")
+   if options.lumilab!="":
+     lat.DrawLatex(0.67,0.92,"%s"%options.lumilab)
+
 
 if options.batch:
   c.SaveAs("%s.pdf"%nam)

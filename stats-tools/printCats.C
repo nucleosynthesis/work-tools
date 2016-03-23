@@ -2,7 +2,10 @@ void printCats(std::string finame, bool loadSnap){
   gSystem->Load("libHiggsAnalysisCombinedLimit");
   TFile *fi = TFile::Open(finame.c_str());
   RooWorkspace *w = (RooWorkspace*)fi->Get("w");
-  if (loadSnap) w->loadSnapshot("MultiDimFit");
+  if (loadSnap) {
+  	std::cout << "Loading Snapshot" << std::endl;
+  	w->loadSnapshot("MultiDimFit");
+  }
   RooFIter iter = w->allCats().fwdIterator();
 	RooAbsArg* arg;
 	while ((arg = iter.next())) {

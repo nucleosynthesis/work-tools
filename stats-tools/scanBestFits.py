@@ -3,7 +3,7 @@ import sys
 from optparse import OptionParser
 
 parser = OptionParser()
-parser.add_option("-f","--fitfile",action='store_true',default="False",help="A ROOT file (mu fit) to add lines")
+parser.add_option("-f","--fitfile",action='store_true',default=False,help="A ROOT file (mu fit) to add lines")
 parser.add_option("-o","--out",help="Output naming")
 parser.add_option("-p","--poi",default="r",help="POI")
 (options,args) = parser.parse_args()
@@ -145,6 +145,7 @@ ROOT.gStyle.SetPaintTextFormat("2.0f");
 h.Draw("TEXTsame")
 
 if options.fitfile:
+  print "Adding Lines from Fit"
  # m,l,u,l2,u2   = findMinAndError(options.fitfile)
   m,l,u,l2,u2   = findMinAndError(args[0])
 
