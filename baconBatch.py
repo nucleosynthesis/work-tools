@@ -8,6 +8,7 @@
 # For now assume output is small enough to store locally. 
 # ------------------------------------------------------------------------------------
 
+import ROOT as r
 import sys, commands, os, fnmatch
 from optparse import OptionParser
 from optparse import OptionGroup
@@ -31,13 +32,15 @@ parser.add_option("-d","--directory",default='',help="Pick up files from a parti
 parser.add_option("-o","--outdir",default='bacon',help="output for analyzer. This will always be the output for job scripts.")
 parser.add_option("-a","--args",dest="args",default=[],action="append",help="Pass executable args n:arg OR named arguments name:arg. Multiple args can be passed with <val1,val2...> or lists of integers with [min,max,stepsize]")
 parser.add_option("-v","--verbose",dest="verbose",default=False,action="store_true",help="Spit out more info")
+parser.add_option("","--passSumEntries",dest="passSumEntries",default="",help="x:treename Get Entries in TTree treename and pass to argument x")
+parser.add_option("","--passSumWeights",dest="passSumWeights",default="",help="x:treename:branch Get Weights from branch in treename and sum them, pass to x")
 parser.add_option("","--blacklist",dest="blacklist",default=[],action="append",help="Add blacklist file types (search for this string in files and ignore them")
 
 # Make batch submission scripts options
-parser.add_option("-n","--njobs",dest="njobs",type='int',default=1,help="Split into n jobs, will automatically produce submission scripts")
+parser.add_option("-n","--njobs",dest="njobs",type='int',default=-1,help="Split into n jobs, will automatically produce submission scripts")
 parser.add_option("-q","--queue",default='1nh',help="submission queue")
 
-parser.add_option("--dryRun",default=False,action="store_true",help="Do nothing, just create jobs if requested")
+parser.add_option("--dryRun",default=False,action="store_true",help="Do nothing, just print what will happen")
 
 # Monitor options (submit,check,resubmit failed)  -- just pass outodir as usual but this time pass --monitor sub --monitor check or --monitor resub
 parser.add_option("--monitor",default='',help="Monitor mode (sub/resub/check directory of jobs)")
@@ -45,12 +48,18 @@ parser.add_option("--monitor",default='',help="Monitor mode (sub/resub/check dir
 cwd = os.getcwd()
 (options,args) = parser.parse_args()
 if len(args)<2 and not options.monitor: sys.exit('Error -- must specify ANALYZER and OUTPUTNAME' )
-njobs = options.njobs
+njobs = options.njobs if options.njobs>0 else 1
+
+if options.passSumWeights and options.passSumEntries : sys.exit('Error -- must specify only one of passSumEntries or passSumWeights' )
+
+r.gROOT.SetBatch(1)
 
 def write_job(exec_line, out, analyzer, i, n):
 
 	cwd = os.getcwd()
-	sub_file = open('%s/sub_%s_job%d.sh'%(out,analyzer,i),'w')
+	analyzer_short = analyzer.split("/")[-1]
+	exec_line = exec_line.replace(analyzer,analyzer_short)
+	sub_file = open('%s/sub_%s_job%d.sh'%(out,analyzer_short,i),'w')
 	sub_file.write('#!/bin/bash\n')
 	sub_file.write('# Job Number %d, running over %d files \n'%(i,n))
 	sub_file.write('touch %s.run\n'%os.path.abspath(sub_file.name))
@@ -60,7 +69,7 @@ def write_job(exec_line, out, analyzer, i, n):
 	sub_file.write('mkdir -p scratch\n')
 	sub_file.write('cd scratch\n')
 	#sub_file.write('cp -p $CMSSW_BASE/bin/$SCRAM_ARCH/%s .\n'%analyzer)
-	sub_file.write('cp -p %s/%s .\n'%(cwd,analyzer))
+	sub_file.write('cp -p %s .\n'%(os.path.abspath(analyzer)))
 	sub_file.write('mkdir -p %s\n'%(out))
 
 	sub_file.write('if ( %s ) then\n'%exec_line)
@@ -74,7 +83,32 @@ def write_job(exec_line, out, analyzer, i, n):
 	sub_file.write('rm -f %s.run\n'%os.path.abspath(sub_file.name))
 	sub_file.close()
 	os.system('chmod +x %s'%os.path.abspath(sub_file.name))
-  
+
+
+def trawlHadd(directory):
+  list_of_dirs=set()
+  for root, dirs, files in os.walk(directory):
+    for x in files:
+      if '.root' in x: 
+	list_of_dirs.add(root)
+
+  for di in list_of_dirs:
+     for root, dirs, files in os.walk(di):
+	  list_of_files=''
+	  for file in fnmatch.filter(files,'*.root'):
+		  list_of_files += ' '+os.path.join(root,'%s'%file)
+	  print root, ' hadding --> ', len(list_of_files.split())
+	  os.system('mkdir -p tmp_r')
+	  print list_of_files
+	  for fi in list_of_files.split():
+	    os.system('cp %s tmp_r/tmp_%s'%(fi,fi.split('/')[-1]))
+	  outname = di.replace('/','_')
+	  exec_line = 'hadd -f %s/%s.root tmp_r/*'%(di,outname)
+	  if options.verbose: print exec_line
+	  os.system(exec_line)
+	  os.system('rm -rf tmp_r')
+
+
 def submit_jobs(lofjobs):
    for sub_file in lofjobs:
     os.system('rm -f %s.done'%os.path.abspath(sub_file))
@@ -83,7 +117,7 @@ def submit_jobs(lofjobs):
     os.system('bsub -q %s -o %s.log %s'%(options.queue,os.path.abspath(sub_file),os.path.abspath(sub_file)))
   
 if options.monitor: 
-  if options.monitor not in ['sub','check','resub']: sys.exit('Error -- Unknown monitor mode %s'%options.monitor)
+  if options.monitor not in ['sub','check','resub','hadd']: sys.exit('Error -- Unknown monitor mode %s'%options.monitor)
   dir = options.outdir
 
   if options.monitor == 'sub' or options.monitor == 'resub': 
@@ -103,20 +137,24 @@ if options.monitor:
     number_of_jobs = 0
     for root,dirs,files in os.walk(dir):
      for file in fnmatch.filter(files,'*.sh'):
-       if os.path.isfile('%s/%s.fail'%(root,file)): failjobs.append('%s'%file)
+       if os.path.isfile('%s/%s.fail'%(root,file)): failjobs.append('%s/%s'%(root,file))
        if os.path.isfile('%s/%s.done'%(root,file)):
-       		if not '%s.sh'%file in failjobs : donejobs.append('%s'%file)
-       if os.path.isfile('%s/%s.run'%(root,file)): runjobs.append('%s'%file)
+       		if not '%s.sh'%file in failjobs : donejobs.append('%s/%s'%(root,file))
+       if os.path.isfile('%s/%s.run'%(root,file)): runjobs.append('%s/%s'%(root,file))
        number_of_jobs+=1
     print 'Status of jobs directory ', dir
     print '  Total of %d jobs'%number_of_jobs 
     print '  %d in status Fail -> (resub them with --monitor resub)'%len(failjobs)
-    for job in failjobs : print '\t %s'%job
+    for job in failjobs : print '\t FAIL %s'%job
     print '  %d in status Running -> '%len(runjobs)
-    for job in runjobs : print '\t %s'%job
+    for job in runjobs : print '\t RUN %s'%job
     print '  %d in status Done -> '%len(donejobs)
-    for job in donejobs : print '\t %s'%job
-
+    for job in donejobs : print '\t DONE %s'%job
+    print "\n  %d/%d Running, %d/%d Done, %d/%d Failed (resub with --monitor resub)"\
+    	%(len(runjobs),number_of_jobs,len(donejobs),number_of_jobs,len(failjobs),number_of_jobs)
+		
+  if options.monitor == 'hadd': trawlHadd(dir) 
+     
   sys.exit('Finished Monitor -- %s'%options.monitor)
 
 def parse_to_dict(l_list):
@@ -124,7 +162,10 @@ def parse_to_dict(l_list):
   ret = {}
   nkey = 0
   for item in l_list: 
-    ni,varg = item.split(':') # should put a try here
+    vargs = item.split(':') # should put a try here
+    ni = vargs[0]
+    varg = vargs[1:]
+    varg = ":".join(varg) 
     if not '-' in ni: 
     	ni = int(ni)
 	nkey+=1
@@ -152,17 +193,17 @@ def parse_to_dict(l_list):
 		iskey+=1
   return ret
 
-def getFilesJob(dirin,job,njobs):
-  if njobs == 1 : 
-  	njobs = -1
+def getFilesJob(dirin,job,tnjobs):
+  if tnjobs == 1 : 
+  	tnjobs = -1
 	job = 0
   infiles = []
   if "," in dirin : alldirs = dirin.split(',')
   else : alldirs=[dirin]
   infiles = []
   for dir in alldirs:
-    if '/store/' in dir : infiles.extend(makeCaFiles(dir,options.blacklist,njobs,job))
-    else : infiles.extend(makeFiles(dir,options.blacklist,njobs,job))
+    if '/store/' in dir : infiles.extend(makeCaFiles(dir,options.blacklist,tnjobs,job))
+    else : infiles.extend(makeFiles(dir,options.blacklist,tnjobs,job))
   if options.verbose: print "VERB -- Found following files for dir %s --> "%dir, infiles
   return infiles
 
@@ -186,17 +227,63 @@ mindeces   = []
 analyzer   = args[0]
 outfile = args[1]
 analyzer_args = parse_to_dict(options.args)
-exec_line = './%s'%analyzer
+
+if options.passSumEntries: 
+  pos,treenam = options.passSumEntries.split(":")
+  numEntries = 0
+  if options.directory : 
+    files = getFilesJob(options.directory.split(":")[1],0,-1)
+    for fi in files: 
+      tf = r.TFile.Open(fi[0])
+      try :
+      	tf.IsOpen() 
+      except:
+        continue
+      hf = tf.Get(treenam) # first try to see if its a histogram
+      try:
+	  numEntries+=int(hf.GetEntries())
+      except:
+        try: 
+	  numEntries+=int(getattr(tf,treenam).GetEntries())
+	except:
+	  continue
+  else: numEntries = -1;
+  if options.verbose : print "VERB -- Sum entries for jobs = %d, being passed to argument %s"%(numEntries,pos)
+  analyzer_args[int(pos)]=['',[int(numEntries)]]
+
+if options.passSumWeights: 
+  pos,treenam,branch = options.passSumWeights.split(":")
+  sumWeights = 0
+  if options.directory : 
+    files = getFilesJob(options.directory.split(":")[1],0,-1)
+    tmpH = r.TH1F("htmp","htmp",1,0,1)
+    for i,fi in enumerate(files): 
+      tf = r.TFile.Open(fi[0])
+      try :
+      	tf.IsOpen() 
+      except:
+        print "WARNING - Cannot open file - %s "%(fi[0])
+        continue
+      try: 
+	  #numEntries+=int(getattr(tf,treenam).GetEntries())
+          tmpH_t = r.TH1F("htmp_%d"%i,"htmp",1,0,1)
+	  tr = tf.Get(treenam)
+	  tr.Draw("0.5>>htmp_%d"%(i),"%s"%(branch))
+	  tmpH.Add(tmpH_t)
+      except:
+          print "WARNING - NO TREE %s for sumWeights :( "%(treenam)
+	  continue
+    sumWeights = tmpH.Integral()
+  else: sys.exit("Lazy!, passSumWeights only with directoy option")
+  if options.verbose : print "VERB -- Sum weights for jobs = %d, being passed to argument %s"%(sumWeights,pos)
+  analyzer_args[int(pos)]=['',[float(sumWeights)]]
+
+exec_line = '%s'%analyzer
 
 if options.directory :
   filepos,options.directory = options.directory.split(':')
   analyzer_args[int(filepos)]=['',"fileinput"]
 
-#for arg_i,arg in enumerate(default_args):
-#  if arg_i in analyzer_args.keys(): 
-#  	arg = analyzer_args[arg_i]
-#	if type(arg)==type(list): exec_line+= ' MULTARG_%d '%arg_i
-#  exec_line+=' %s '%arg
 
 # NEED TO ITERATE OF MAP OF ARGS, FORGET DEFAULT ARGGS I THINK, forec them set!!!!!
 #for arg_i,arg in enumerate(default_args):
@@ -218,11 +305,9 @@ for key in sortedkeys:
 for arg_c in range(0,max(analyzer_args.keys())):
   if arg_c not in analyzer_args.keys(): sys.exit("ERROR -- missing argument %d"%arg_c)
 
-print 'running executable -- (default call) \n\t%s'%exec_line
-
-if not options.dryRun and njobs > 1:
-	print 'Writing %d Submission Scripts to %s (submit after with --monitor sub)'%(njobs,options.outdir)
-
+if not options.dryRun and njobs > 0:
+	print ' Writing %d Submission Scripts to %s (submit after with --monitor sub)'%(njobs,options.outdir)	
+	print '  will use executable -- (default call pattern shown) \n\t%s'%exec_line
 
 for job_i in range(njobs):
  ################################ WHY does this need to be recreate?
@@ -252,7 +337,10 @@ for job_i in range(njobs):
  if options.verbose: print "VERB -- job exec line --> ",job_exec
 
  if options.dryRun : 
- 	print 'job %d/%d -> '%(job_i+1,njobs), job_exec
- elif njobs > 1: 
+ 	print '     will produce job %d/%d -> '%(job_i+1,njobs), job_exec
+ elif options.njobs > 0: 
    write_job(job_exec, options.outdir, analyzer, job_i, nfiles_i)
- else: os.system(job_exec) 
+ else: 
+
+ 	print "Running: ", job_exec
+ 	os.system(job_exec) 

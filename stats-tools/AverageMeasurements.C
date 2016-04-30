@@ -91,7 +91,7 @@ void AverageMeasurements(float x1=58.9, float dx1stat=3.4, float dx1uncorr=1.5, 
   // correlated systematic uncertainty is taken as the average of the two correlated systematic
   // uncertainties. The total uncertainty is decomposed into statistical and systematic contributions.
 
-  cout << "Approximate, simple formulae" << endl;
+  cout << "Approximate, simple formulae (ignore this one, why is it even printed?)" << endl;
   cout << "----------------------------" << endl;
   float dmcorr = 0.5*(dx1corr + dx2corr);
   // The subtotal uncertainties are the uncorrelated (statistical and uncorrelated systematic)

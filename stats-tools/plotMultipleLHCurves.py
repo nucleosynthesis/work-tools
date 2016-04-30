@@ -46,7 +46,9 @@ parser.add_option("","--cut",default="",type='str')
 parser.add_option("","--signif",default=False,action='store_true',help="try to calculate significance ->  sqrt[2(nll(min)-nll(option.null))] ")
 parser.add_option("","--line",type='string',action='callback',callback=sandy_callback)
 parser.add_option("","--lumilab",type='string',default="")
+parser.add_option("","--entrylabel",type='string',default="")
 (options,args)=parser.parse_args()
+if options.entrylabel: options.entrylabel = [float(e) for e in options.entrylabel.split(",")]
 
 nam = options.outnames if options.outnames else options.xvar
 if options.outnames: outtxt= open("%s.txt"%nam,"w")
@@ -64,10 +66,12 @@ outTree = ROOT.TTree("restree","restree")
 cenV  = array.array('d',[0]) 
 errHV = array.array('d',[0]) 
 errLV = array.array('d',[0]) 
+entlabel = array.array('d',[0])
 
 outTree.Branch("%s"%options.xvar,cenV,"%s/D"%options.xvar)
 outTree.Branch("%s_u"%options.xvar,errHV,"%s_u/D"%options.xvar)
 outTree.Branch("%s_d"%options.xvar,errLV,"%s_d/D"%options.xvar)
+if options.entrylabel: outTree.Branch("entrylabel",entlabel,"entrylabel/D")
 
 if options.runSpline: ROOT.gSystem.Load("libHiggsAnalysisCombinedLimit")
 
@@ -387,6 +391,7 @@ for p,fn in enumerate(files):
  cenV[0] = m
  errHV[0]  = h-m
  errLV[0]  = m-l
+ if len(options.entrylabel): entlabel[0] = options.entrylabel[p]
  lowers.append(l)
  uppers.append(h)
  signifs.append(signif)
