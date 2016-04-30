@@ -123,7 +123,7 @@ def makePlot(c,l,h):
   grC.SetMarkerSize(0.85) 
   grC.SetLineWidth(2)
   grC.SetTitle("")
-  cc = ROOT.TCanvas("cc","",800,800)
+  cc = ROOT.TCanvas("cc","",800,760)
   grC.SetName("centre")
   grE.SetName("errors")
   fout.cd()
