@@ -408,14 +408,26 @@ if options.makeplot:
 
 # Now make the plot of the curve
 c = ROOT.TCanvas("c","c",600,600)
+if options.result: 
+  	c.SetLeftMargin(0.13)
+  	c.SetBottomMargin(0.13)
+	c.SetTicky()
+        c.SetTickx()
 c.SetGridx()
 c.SetGridy()
 
 grs[0].GetXaxis().SetTitle("%s"%options.xvar)
 grs[0].GetYaxis().SetTitle("%s"%options.ylabel)
-grs[0].GetYaxis().SetTitleOffset(1.2)
+grs[0].GetYaxis().SetTitleOffset(1.3)
+grs[0].GetXaxis().SetTitleOffset(1.3)
+if options.result: grs[0].GetYaxis().SetTitleSize(0.045)
+if options.result: grs[0].GetXaxis().SetTitleSize(0.045)
 
-if options.result: leg = ROOT.TLegend(0.6,0.77,0.89,0.89)
+if options.result:
+	LHeight = (0.87-0.75)/2
+	LHeight*=len(grs)
+	leg = ROOT.TLegend(0.58,0.87-LHeight,0.87,0.87)
+
 else:leg = ROOT.TLegend(0.05,0.72,0.99,0.98)
 leg.SetTextFont(42)
 leg.SetTextSize(0.03)
@@ -496,7 +508,7 @@ if len(grs)==1:
 
 LL = ROOT.TLine(gr.GetXaxis().GetXmin(),options.cl,gr.GetXaxis().GetXmax(),options.cl); LL.SetLineColor(2); LL.SetLineWidth(2)
 LL.SetLineStyle(2)
-LL.Draw()
+if not options.result: LL.Draw()
 
 if len(options.Title)>0:
   print "Add title"
@@ -510,10 +522,15 @@ if options.result:
    lat.SetTextFont(42)
    var = options.xl if options.xl else options.xvar
    if options.verb: lat.DrawLatex(0.5,0.8,"%s = %.2f^{+%.2f}_{-%.2f}"%(var,centres[0],uppers[0]-centres[0],centres[0]-lowers[0]))
-   lat.SetTextSize(0.035)
-   lat.DrawLatex(0.1,0.92,"#bf{CMS} #it{Preliminary}")
+   lat.SetTextSize(0.062)
+   #lat.DrawLatex(0.1,0.92,"#bf{CMS} #it{Preliminary}")
+   lat.DrawLatex(0.18,0.8,"#bf{CMS}")
+   lat.SetTextSize(0.034)
    if options.lumilab!="":
-     lat.DrawLatex(0.67,0.92,"%s"%options.lumilab)
+     if len(options.lumilab)<10:
+       lat.DrawLatex(0.7,0.92,"%s"%options.lumilab)
+     else:
+       lat.DrawLatex(0.14,0.92,"%s"%options.lumilab)
 
 
 if options.batch:
