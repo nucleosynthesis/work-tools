@@ -358,7 +358,8 @@ for p,fn in enumerate(files):
 	  gr.SetPoint(c,r,(nll))
 	  if options.VERB : print "at: ", r, nll
 	  c+=1
- 
+
+   gr.SetName(names[p])
    grs.append(gr.Clone())
  else : 
  	tmpfile = ROOT.TFile.Open(fn.split(":")[0])
@@ -372,6 +373,7 @@ for p,fn in enumerate(files):
 	m,m1 = findQuantile(res,0);
 	l,h  = findQuantile(res,options.cl);
 	extfiles.append(tmpfile)
+        gr.SetName(names[p])
         grs.append(gr.Clone())
 
  centres.append(m)
@@ -542,4 +544,15 @@ else:
 
 outTreeFile.cd()
 outTree.Write()
+
+for gr in grs: 
+	name = gr.GetName()
+	name = name.replace(" ","_")
+	name = name.replace(".","_")
+	name = name.replace("(","_")
+	name = name.replace(")","_")
+	print name
+	gr.SetName(name)
+	gr.Write()
+
 print "central+errors Results saved in", outTreeFile.GetName()
