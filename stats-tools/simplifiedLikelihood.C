@@ -106,16 +106,19 @@ double fitSignal(std::string outname="simple.root"){
      bkg->Print();
 
      TH2F *corr = (TH2F*)covar->Clone();  corr->SetName("correlation");
-
+     
      // bkg and covariance defined as pdf / GeV, so scale by bin widhts 
      int nbins = data.GetNbinsX();
+
      if (!isTH1Input){
       for (int b=1;b<=nbins;b++){
        double bw = bkg->GetBinWidth(b);
        bkg->SetBinContent(b,bkg->GetBinContent(b)*bw);
+       bkg->SetBinError(b,bkg->GetBinError(b)*bw);
        signal->SetBinContent(b,signal->GetBinContent(b)*bw);
        for (int j=1;j<=nbins;j++){
-       	covar->SetBinContent(b,j,covar->GetBinContent(b,j)*bw*bw);
+        double bj = bkg->GetBinWidth(j);
+       	covar->SetBinContent(b,j,covar->GetBinContent(b,j)*bw*bj);
 	if (ignoreCorrelation && b!=j) covar->SetBinContent(b,j,0); 
        }
       }
@@ -126,6 +129,8 @@ double fitSignal(std::string outname="simple.root"){
 	double sigb = TMath::Sqrt(covar->GetBinContent(b,b));
 	double sigj = TMath::Sqrt(covar->GetBinContent(j,j));
 	corr->SetBinContent(b,j,covar->GetBinContent(b,j)/(sigb*sigj));
+	std::cout << b << ", " << j << ", " << covar->GetBinContent(b,j) << ", " << corr->GetBinContent(b,j)  << std::endl;
+	if ( b==j )  std::cout << "      " << bkg->GetBinError(b)*bkg->GetBinError(b)  << std::endl;
        }
      }
 
@@ -159,7 +164,7 @@ double fitSignal(std::string outname="simple.root"){
    	//obsdata.add(localset);
         observation.setVal(data.GetBinContent(b));
         obsdata.add(RooArgSet(observation,sampleType));
-	//std::cout << " Observed at " << b << ", " << observation.getVal() << std::endl;
+	std::cout << " Observed at " << b << ", " << observation.getVal() << std::endl;
      }
 
      // make a constraint term for the background, and a RooRealVar for bkg 
@@ -167,8 +172,8 @@ double fitSignal(std::string outname="simple.root"){
 	double bkgy = (double)bkg->GetBinContent(b);
 	RooRealVar *mean_ = new RooRealVar(Form("exp_bin_%d_In",b),Form("expected bin %d",b),bkgy); 
 	mean_->setConstant(true);
-	RooRealVar *x_ = new RooRealVar(Form("exp_bin_%d",b),Form("bkg bin %d",b),bkgy,0.2*bkgy,bkgy*4);
-	//std::cout << " Exp background At " << b << ", " << x_->getVal() << std::endl;
+	RooRealVar *x_ = new RooRealVar(Form("exp_bin_%d",b),Form("bkg bin %d",b),bkgy,0.01*bkgy,bkgy*10);
+	std::cout << " Exp background At " << b << ", " << x_->getVal() << std::endl;
 	xlist_.add(*x_);
 	mu_.add(*mean_);
      }      
@@ -205,7 +210,7 @@ double fitSignal(std::string outname="simple.root"){
        RooAddition *sum = new RooAddition(Form("splusb_bin_%d",b),Form("Signal plus background in bin %d",b),RooArgList(*((RooRealVar*)(signals_.at(b-1))),*((RooRealVar*)(xlist_.at(b-1)))));
        RooPoisson  *pois = new RooPoisson(Form("pdf_bin_%d",b),Form("Poisson in bin %d",b),observation,(*sum)); 
        //RooGaussian *gaus = new RooGaussian(Form("pdf_bin_%d",b),Form("Poisson in bin %d",b),observation,(*sum),RooFit::RooConst(TMath::Sqrt(sum->getVal())));
-         combined_pdf.addPdf(*pois,Form("%d",b-1));
+       combined_pdf.addPdf(*pois,Form("%d",b-1));
        slist_.add(*sum);
        plist_.add(*pois);
      }
@@ -216,6 +221,7 @@ double fitSignal(std::string outname="simple.root"){
      RooAbsReal *nll_ = combined_pdf.createNLL(obsdata,RooFit::ExternalConstraints(RooArgList(constraint_pdf)));
      //
      RooMinimizer m(*nll_);
+     m.setStrategy(1);
      m.minimize("Minuit2","minimize");
      // constrained fit!
      r.setConstant(true);
@@ -232,6 +238,7 @@ double fitSignal(std::string outname="simple.root"){
      RooMinimizer mc(*nll_);
      //combinedpdfprod.fitTo(obsdata);
      //
+     double minimum_r = r.getVal();
      r_=r.getVal();
      deltaNLL_=0;
      tree->Fill();
@@ -254,9 +261,10 @@ double fitSignal(std::string outname="simple.root"){
      // Now make an asimov dataset
      r.setVal(0); mc.minimize("Minuit2","minimize"); 
      RooDataSet asimovdata("AsimovData","Asimov in all Bins",obsargset);
+ 
      for (int b=1;b<=nbins;b++){
         sampleType.setIndex(b-1);
-        std::cout << sampleType.getLabel() << ", " << sampleType.getIndex() << std::endl;
+        //std::cout << sampleType.getLabel() << ", " << sampleType.getIndex() << std::endl;
         //RooArgSet localset(observation,sampleType);
    	//obsdata.add(localset);
 	observation.setVal((int)bkg->GetBinContent(b));
@@ -264,8 +272,9 @@ double fitSignal(std::string outname="simple.root"){
      }
      RooAbsReal *nllA_ = combined_pdf.createNLL(asimovdata,RooFit::ExternalConstraints(RooArgList(constraint_pdf)));
 
-     double UL = getUpperLimit(nll_,nllA_,&r,0.95);
-     std::cout << "Upper Limit 95% " << UL << std::endl;
+     //double UL = getUpperLimit(nll_,nllA_,&r,0.95);
+     UL = 1.;
+     std::cout << "Upper Limit 95% " << UL << ", Best Fit r=" << minimum_r  << std::endl;
      return UL;
      /*
      RooAbsReal *nll_ = combinedpdfprod.createNLL(obsdata);
