@@ -47,6 +47,8 @@ parser.add_option("","--signif",default=False,action='store_true',help="try to c
 parser.add_option("","--line",type='string',action='callback',callback=sandy_callback)
 parser.add_option("","--lumilab",type='string',default="")
 parser.add_option("","--entrylabel",type='string',default="")
+parser.add_option("","--obsexpected",action='store_true',default=False)
+parser.add_option("","--supp",action='store_true',default=False)
 (options,args)=parser.parse_args()
 if options.entrylabel: options.entrylabel = [float(e) for e in options.entrylabel.split(",")]
 
@@ -208,7 +210,10 @@ skipFile = False
 for p,fn in enumerate(files):
 
  if not len(options.labels) : names.append(fn.strip(".root"))
- else: names.append(options.labels[p])
+ else: 
+ 	if p<len(options.labels): names.append(options.labels[p])
+	else: names.append("")
+
  if ":" not in fn:
    f = ROOT.TFile(fn)
    
@@ -387,7 +392,7 @@ for p,fn in enumerate(files):
 	nll0 = gr.Eval(options.null)
 	nllbf = gr.Eval(m)
 	signif = (nll0-nllbf)**0.5
-	print ".. significance (pval) from %g = "%options.null, signif,ROOT.RooStats.SignificanceToPValue(signif)
+	print "... 2*deltaNLL, significance (pval) from %g = "%options.null,nll0-nllbf, signif,ROOT.RooStats.SignificanceToPValue(signif)
 	if options.outnames: outtxt.write(".. significance (pval) from %g = \n"%options.null, signif,ROOT.RooStats.SignificanceToPValue(signif))
 
  cenV[0] = m
@@ -427,14 +432,21 @@ if options.result: grs[0].GetXaxis().SetTitleSize(0.045)
 
 if options.result:
 	LHeight = (0.87-0.75)/2
-	LHeight*=len(grs)
+	LHeight*=len(filter(lambda x: len(x)>0,names))
 	leg = ROOT.TLegend(0.58,0.87-LHeight,0.87,0.87)
 
+
 else:leg = ROOT.TLegend(0.05,0.72,0.99,0.98)
+hEXP = ROOT.TH1F("h","h",1,0,1)  ; hEXP.SetLineWidth(2); hEXP.SetLineColor(1); hEXP.SetLineStyle(2)
+hOBS = ROOT.TH1F("hO","h",1,0,1) ; hOBS.SetLineWidth(2); hOBS.SetLineColor(1)
 leg.SetTextFont(42)
 leg.SetTextSize(0.03)
 leg.SetFillColor(0)
 #leg.SetBorderSize(0)
+if options.obsexpected: 
+    leg.AddEntry(hOBS,"Observed","L")
+    leg.AddEntry(hEXP,"Expected","L")
+
 
 allLinesL = []
 allLinesU = []
@@ -495,10 +507,13 @@ for j,gr in enumerate(grs):
  	fname = names[j]
 	if options.nofile: fname = ''
  	if options.signif:
-	 leg.AddEntry(gr,"%s, %s=%.3f^{-%.3f}_{+%.3f} (%.1f#sigma)"%(fname ,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j],signifs[j]),"L")
+	 if len(fname)>0:
+	  leg.AddEntry(gr,"%s, %s=%.3f^{-%.3f}_{+%.3f} (%.1f#sigma)"%(fname ,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j],signifs[j]),"L")
  	else:
-	 leg.AddEntry(gr,"%s, %s=%.3f -%.3f +%.3f"%( fname,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j]),"L")
- else: leg.AddEntry(gr,names[j],"L")
+	 if len(fname)>0:
+	  leg.AddEntry(gr,"%s, %s=%.3f -%.3f +%.3f"%( fname,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j]),"L")
+ else: 
+   if len(names[j])>0: leg.AddEntry(gr,names[j],"L")
  
  for jj in range(len(SANDYLINES)): leg.AddEntry(grEXT[jj],SANDYLINES[jj],"p")
 
@@ -508,7 +523,13 @@ if len(grs)==1:
  allLinesL[0].SetLineColor(2)
  allLinesU[0].SetLineColor(2)
 
-LL = ROOT.TLine(gr.GetXaxis().GetXmin(),options.cl,gr.GetXaxis().GetXmax(),options.cl); LL.SetLineColor(2); LL.SetLineWidth(2)
+if options.xr: 
+
+	XRANGE=(options.xr).split(":")
+	LL = ROOT.TLine(float(XRANGE[0]),options.cl,float(XRANGE[1]),options.cl);
+
+else: LL = ROOT.TLine(gr.GetXaxis().GetXmin(),options.cl,gr.GetXaxis().GetXmax(),options.cl); 
+LL.SetLineColor(2); LL.SetLineWidth(2)
 LL.SetLineStyle(2)
 if not options.result: LL.Draw()
 
@@ -526,7 +547,8 @@ if options.result:
    if options.verb: lat.DrawLatex(0.5,0.8,"%s = %.2f^{+%.2f}_{-%.2f}"%(var,centres[0],uppers[0]-centres[0],centres[0]-lowers[0]))
    lat.SetTextSize(0.062)
    #lat.DrawLatex(0.1,0.92,"#bf{CMS} #it{Preliminary}")
-   lat.DrawLatex(0.18,0.8,"#bf{CMS}")
+   if options.supp: lat.DrawLatex(0.18,0.8,"#splitline{#bf{CMS}}{#it{Supplementary}}")
+   else: lat.DrawLatex(0.18,0.8,"#bf{CMS}")
    lat.SetTextSize(0.034)
    if options.lumilab!="":
      if len(options.lumilab)<10:

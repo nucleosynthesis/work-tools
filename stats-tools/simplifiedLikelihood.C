@@ -1,59 +1,84 @@
 //Simple script to fit a signal with background + systematics and data
 
-bool isTH1Input=false;
-std::string channel = "ggH_hinv_13TeV_datacard_SR_monoJ";
-bool ignoreCorrelation = false;
+const bool isTH1Input=false;
+const std::string channel = "ggH_hinv_13TeV_datacard_SR_monoJ";
 bool justCalcLimit = false;
+bool doExpected = false;
 
 double GetCLs(RooAbsReal *nllD_, RooAbsReal *nllA_, RooRealVar *r, double rVal){
    
-  r->setConstant(0);  
+  r->setConstant(false); // how is it that this guy is fitting -ve? 
+  //r->setMin(0);
+  
   RooMinimizer mCA(*nllA_);
   mCA.minimize("Minuit2","minimize"); 
   double minNllA_ = nllA_->getVal();
+  rBestA_ = r->getVal();
+
   RooMinimizer mCD(*nllD_);
   mCD.minimize("Minuit2","minimize");
   double minNllD_ = nllD_->getVal();
   rBestD_ = r->getVal();
-  std::cout << "R Best =  " << rBestD_ << std::endl;
 
-  r->setConstant(1);  r->setVal(rVal);
+  r->setConstant(true);  r->setVal(rVal);
   RooMinimizer mUA(*nllA_);
-  mUA.minimize("Minuit2","minimize"); 
+  mUA.minimize("Minuit2","minimize");
+  double nllFixA = nllA_->getVal();
   RooMinimizer mUD(*nllD_);
   mUD.minimize("Minuit2","minimize");
+  double nllFixD = nllD_->getVal();
 
-  double qmu = 2*(nllD_->getVal() - minNllD_); if (qmu < 0) qmu = 0;
+  double qmu = 2*(nllFixD - minNllD_); if (qmu < 0) qmu = 0;
   if (rVal < rBestD_) qmu=0;
+  if (rBestD_<0 ) qmu=0;
   
-  double qA  = 2*(nllA_->getVal() - minNllA_); if (qA < 0) qA = 0; // shouldn't this always be 0?
+  double qA  = 2*(nllFixA - minNllA_); if (qA < 0) qA = 0; // shouldn't this always be 0?
 
-  double CLsb = ROOT::Math::normal_cdf_c(sqrt(qmu));
-  double CLb  = ROOT::Math::normal_cdf(sqrt(qA)-sqrt(qmu));
+  double CLsb = ROOT::Math::normal_cdf_c(TMath::Sqrt(qmu));
+  double CLb  = ROOT::Math::normal_cdf(TMath::Sqrt(qA)-TMath::Sqrt(qmu));
+
   if (qmu > qA) {
     // In this region, things are tricky
-    double mos = sqrt(qA); // mu/sigma
+    double mos = TMath::Sqrt(qA); // mu/sigma
     CLsb = ROOT::Math::normal_cdf_c( (qmu + qA)/(2*mos) );
     CLb  = ROOT::Math::normal_cdf_c( (qmu - qA)/(2*mos) );
   }
+
   double CLs  = (CLb == 0 ? 0 : CLsb/CLb);
+  if (doExpected) {
+    double N = ROOT::Math::normal_quantile(0.5, 1.0);
+    double clb = 0.5;
+    double clsplusb = ROOT::Math::normal_cdf_c( TMath::Sqrt(qA) - N, 1.);
+    std::cout << "CLsplusb = " << clsplusb << ", CLb " << clb << ", CLs " << clsplusb/clb << std::endl;
+    std::cout << "rMIN (asimov), qA = " << rBestA_ << ", " << qA << std::endl; 
+    return (clb != 0 ? clsplusb/clb : 0); 
+  }
+  std::cout << "CLsplusb = " << CLsb << ", CLb " << CLb << ", CLs " << CLs << std::endl;
+  std::cout << "rMIN (data), qmu = " << rBestD_ << ", " << qmu <<std::endl; 
   return CLs;
     
 }
 double getUpperLimit(RooAbsReal *nllD_, RooAbsReal *nllA_, RooRealVar *r, double cl){
 
-  rMin = 0.1;
-  rMax = 2.; 
+  rMin = 0.2;
+  rMax = 3; 
 
   TGraph *CLSgraph = new TGraph(); int pt=0;
-  for (double rV = rMin;rV<=rMax;rV+=0.1){
+  bool cls_min=999;
+  bool cls_max=-999;
+  for (double rV = rMin;rV<=rMax;rV+=0.05){
   	double clsV = GetCLs(nllD_,nllA_,r,rV);
 	CLSgraph->SetPoint(pt,clsV,rV);
 	pt++;
+	if (clsV<cls_min )cls_min = clsV;
+	if (clsV>cls_max )cls_max = clsV;
   }
 //  for (int pt=0;pt<CLSgraph->GetN();pt++){
 //	std::cout << " At r="<<CLSgraph->GetY()[pt] << ",  CLs="<<CLSgraph->GetX()[pt]<<std::endl;
 //  }
+
+  if (cls_min>1-cl) return   rMax ;
+  if (cls_max<1-cl) return   rMin ;
 
   return CLSgraph->Eval(1-cl);
 }
@@ -88,33 +113,39 @@ TH1F getData(RooWorkspace *w, TH1F *sigh){
 	return *t; 
 }
 
-double fitSignal(std::string outname="simple.root"){
+double fitSignal(std::string outname="simple.root",std::string signalfilename="mlfit16000010.root", bool runExpected = false,  bool ignoreCorrelation = false){
+
+     gROOT->SetBatch(1);
+     gStyle->SetOptStat(0);
+     doExpected = runExpected;
 
 	std::string shapes_file = "mlfit.root";
 	std::string data_file = "monoJet.root";
-     
      TFile *dfile = TFile::Open(data_file.c_str());
      TFile *sfile = TFile::Open(shapes_file.c_str());
+     TFile *signalfile = TFile::Open(signalfilename.c_str());
+     std::cout << "Open files  " << signalfilename << std::endl; 
 
-     TH1F *bkg    = (TH1F*)sfile->Get(Form("shapes_fit_b/%s/total",channel.c_str()));
-     TH1F *signal = (TH1F*)sfile->Get(Form("shapes_prefit/%s/total_signal",channel.c_str()));		// TH1 for signal  
+     TH1F *bkg      = (TH1F*)sfile->Get(Form("shapes_fit_b/%s/total",channel.c_str()));
+     TH1F *bkgpf    = (TH1F*)sfile->Get(Form("shapes_prefit/%s/total_background",channel.c_str()));
+     TH1F *bkgcombfit    = (TH1F*)signalfile->Get(Form("shapes_fit_b/%s/total_background",channel.c_str()));
+     TH1F *signal = (TH1F*)signalfile->Get(Form("shapes_prefit/%s/total_signal",channel.c_str()));		// TH1 for signal  
      TH1F data(getData((RooWorkspace*)dfile->Get("w"),signal));			// TH1 for data :( 
      TH2F *covar  = (TH2F*)sfile->Get(Form("shapes_fit_b/%s/total_covar",channel.c_str()));
-
      covar->Print();
      signal->Print();
      bkg->Print();
 
      TH2F *corr = (TH2F*)covar->Clone();  corr->SetName("correlation");
-     
+
      // bkg and covariance defined as pdf / GeV, so scale by bin widhts 
      int nbins = data.GetNbinsX();
-
+     //nbins = 3;
      if (!isTH1Input){
       for (int b=1;b<=nbins;b++){
        double bw = bkg->GetBinWidth(b);
        bkg->SetBinContent(b,bkg->GetBinContent(b)*bw);
-       bkg->SetBinError(b,bkg->GetBinError(b)*bw);
+       bkgcombfit->SetBinContent(b,bkgcombfit->GetBinContent(b)*bw);
        signal->SetBinContent(b,signal->GetBinContent(b)*bw);
        for (int j=1;j<=nbins;j++){
         double bj = bkg->GetBinWidth(j);
@@ -123,20 +154,19 @@ double fitSignal(std::string outname="simple.root"){
        }
       }
      }
+     //if ( signal->Integral() > 0.6*data.Integral()) return 0.;
 
      for (int b=1;b<=nbins;b++){
        for (int j=1;j<=nbins;j++){
 	double sigb = TMath::Sqrt(covar->GetBinContent(b,b));
 	double sigj = TMath::Sqrt(covar->GetBinContent(j,j));
 	corr->SetBinContent(b,j,covar->GetBinContent(b,j)/(sigb*sigj));
-	std::cout << b << ", " << j << ", " << covar->GetBinContent(b,j) << ", " << corr->GetBinContent(b,j)  << std::endl;
-	if ( b==j )  std::cout << "      " << bkg->GetBinError(b)*bkg->GetBinError(b)  << std::endl;
        }
      }
 
      RooArgList xlist_;
      RooArgList olist_;
-     RooArgList mu_;
+     RooArgList mu_,muA_;
 
      bkg->Print() ;
      covar->Print() ; 
@@ -162,7 +192,7 @@ double fitSignal(std::string outname="simple.root"){
         std::cout << sampleType.getLabel() << ", " << sampleType.getIndex() << std::endl;
         //RooArgSet localset(observation,sampleType);
    	//obsdata.add(localset);
-        observation.setVal(data.GetBinContent(b));
+	observation.setVal(data.GetBinContent(b));
         obsdata.add(RooArgSet(observation,sampleType));
 	std::cout << " Observed at " << b << ", " << observation.getVal() << std::endl;
      }
@@ -170,12 +200,15 @@ double fitSignal(std::string outname="simple.root"){
      // make a constraint term for the background, and a RooRealVar for bkg 
      for (int b=1;b<=nbins;b++){
 	double bkgy = (double)bkg->GetBinContent(b);
-	RooRealVar *mean_ = new RooRealVar(Form("exp_bin_%d_In",b),Form("expected bin %d",b),bkgy); 
+	RooRealVar *mean_ 	= new RooRealVar(Form("exp_bin_%d_In",b),Form("expected bin %d",b),bkgy); 
+	RooRealVar *meanAsimov_ = new RooRealVar(Form("exp_bin_%d_In_asimov",b),Form("ASimov expected bin %d",b),bkgy); 
 	mean_->setConstant(true);
-	RooRealVar *x_ = new RooRealVar(Form("exp_bin_%d",b),Form("bkg bin %d",b),bkgy,0.01*bkgy,bkgy*10);
-	std::cout << " Exp background At " << b << ", " << x_->getVal() << std::endl;
+	meanAsimov_->setConstant(true);
+	RooRealVar *x_ = new RooRealVar(Form("exp_bin_%d",b),Form("bkg bin %d",b),bkgy,0.2*bkgy,bkgy*4);
+	std::cout << " Pre-fit Exp background At " << b << ", " << x_->getVal() << std::endl;
 	xlist_.add(*x_);
 	mu_.add(*mean_);
+	muA_.add(*meanAsimov_);
      }      
 
      // constraint PDF for background
@@ -193,10 +226,12 @@ double fitSignal(std::string outname="simple.root"){
      std::cout<< "Made Covariance Gauss" << std::endl;
      
      // Make the signal component 
-     RooRealVar r("r","r",1,-5,5);
+     RooRealVar r("r","r",1,0,10);
+     r.removeRange();
      RooArgList signals_;
      for (int b=1;b<=nbins;b++) {
-	RooProduct *sigF = new RooProduct(Form("signal_%d",b),"signal nominal",RooArgSet(r,RooFit::RooConst(signal->GetBinContent(b))));
+	//RooProduct *sigF = new RooProduct(Form("signal_%d",b),"signal nominal",RooArgSet(r,RooFit::RooConst(signal->GetBinContent(b))));
+	RooFormulaVar *sigF = new RooFormulaVar(Form("signal_%d",b),Form("@0*%g",signal->GetBinContent(b)),RooArgSet(r));
 	std::cout << " Signal At " << b << ", " << sigF->getVal() << std::endl;
 	signals_.add(*sigF);
      }
@@ -209,7 +244,6 @@ double fitSignal(std::string outname="simple.root"){
      for (int b=1;b<=nbins;b++){
        RooAddition *sum = new RooAddition(Form("splusb_bin_%d",b),Form("Signal plus background in bin %d",b),RooArgList(*((RooRealVar*)(signals_.at(b-1))),*((RooRealVar*)(xlist_.at(b-1)))));
        RooPoisson  *pois = new RooPoisson(Form("pdf_bin_%d",b),Form("Poisson in bin %d",b),observation,(*sum)); 
-       //RooGaussian *gaus = new RooGaussian(Form("pdf_bin_%d",b),Form("Poisson in bin %d",b),observation,(*sum),RooFit::RooConst(TMath::Sqrt(sum->getVal())));
        combined_pdf.addPdf(*pois,Form("%d",b-1));
        slist_.add(*sum);
        plist_.add(*pois);
@@ -221,61 +255,127 @@ double fitSignal(std::string outname="simple.root"){
      RooAbsReal *nll_ = combined_pdf.createNLL(obsdata,RooFit::ExternalConstraints(RooArgList(constraint_pdf)));
      //
      RooMinimizer m(*nll_);
-     m.setStrategy(1);
      m.minimize("Minuit2","minimize");
-     // constrained fit!
-     r.setConstant(true);
      double nllMin = nll_->getVal();
+     double rMin = r.getVal();
 
-     TFile *fout = new TFile(outname.c_str(),"RECREATE");
-     TTree *tree = new TTree("limit","limit");
+     TFile *fout; 
+     TTree *tree;
 
      float deltaNLL_;
      float r_;
-     tree->Branch("r",&r_,"r/F");
-     tree->Branch("deltaNLL",&deltaNLL_,"deltaNLL/F");
 
+     // Now make an asimov dataset
+     // make a histogram for post-fits 
+     TH1F *h_post_fit = (TH1F*)bkgcombfit->Clone(); h_post_fit->SetLineColor(4); 
+     h_post_fit->SetName("simple");
+
+     r.setConstant(true);
      RooMinimizer mc(*nll_);
-     //combinedpdfprod.fitTo(obsdata);
-     //
-     double minimum_r = r.getVal();
-     r_=r.getVal();
-     deltaNLL_=0;
-     tree->Fill();
+     r.setVal(0); mc.minimize("Minuit2","minimize"); 
+     RooDataSet asimovdata("AsimovData","Asimov in all Bins",obsargset);
+
+     for (int b=1;b<=nbins;b++){
+        sampleType.setIndex(b-1);
+        //RooArgSet localset(observation,sampleType);
+   	//obsdata.add(localset);
+	double exp = (double) ((int)(*(RooRealVar*)slist_.at(b-1)).getVal());
+	((RooRealVar*)muA_.at(b-1))->setVal(exp); 
+	observation.setVal(exp);
+	h_post_fit->SetBinContent(b,exp);
+	std::cout << " post fit Exp background At " << b << ", Simple code=" << exp << ", combine code=" << bkgcombfit->GetBinContent(b) << " Observed in the data " << data.GetBinContent(b) << std::endl;
+	std::cout << " Asi = "<< observation.getVal() << ", besty = " << ((RooRealVar*)muA_.at(b-1))->getVal()  << " before the fit that was " << bkg->GetBinContent(b) << std::endl;
+        asimovdata.add(RooArgSet(observation,sampleType));
+     }
+
+     /* Reset constraints ! */
+     RooMultiVarGaussian asimov_constraint_pdf("asimov_constraint_pdf","Constraint for background pdf",xlist_,muA_,Tcovar);
+     RooAbsReal *nllA_ = combined_pdf.createNLL(asimovdata,RooFit::ExternalConstraints(RooArgList(asimov_constraint_pdf)));
+
+
+
+     double goCLS = GetCLs(nll_,nllA_,&r,1.);
+
      if (!justCalcLimit){
+     
+      fout = new TFile(outname.c_str(),"RECREATE");
+      tree = new TTree("limit","limit");
+      tree->Branch("r",&r_,"r/F");
+      tree->Branch("deltaNLL",&deltaNLL_,"deltaNLL/F");
+      r.setConstant(false);
+
+      r.setMin(-2);
+      r.setMax(2);
+
+      RooMinimizer *minimG;
+      if (doExpected) minimG = new RooMinimizer(*nllA_);
+      else minimG = new RooMinimizer(*nll_);
+      minimG->minimize("Minuit2","minimize");
+      r_=r.getVal();
+      deltaNLL_=0;
+      tree->Fill();
+      if (doExpected) nllMin = nllA_->getVal();
+      else nllMin = nll_->getVal();
+  
+
+      r.setConstant(true);
+      RooMinimizer *minimC;
+      if (doExpected) minimC = new RooMinimizer(*nllA_);
+      else minimC = new RooMinimizer(*nll_);
+
       for(float rv=-2;rv<=2;rv+=0.1){
 	r.setVal(rv);
 	r_=rv;
-	mc.minimize("Minuit2","minimize");
-	deltaNLL_ = nll_->getVal() - nllMin; 
+	minimC->minimize("Minuit2","minimize");
+	if (doExpected) deltaNLL_ = nllA_->getVal() - nllMin; 
+	else deltaNLL_ = nll_->getVal() - nllMin; 
 	std::cout << "r="<< rv <<", Dnll="<<deltaNLL_ << std::endl;
 	tree->Fill();
       }
+
+      fout->cd();
+      tree->Write();
+      //corr->Write();
+      //
+      // nice plot too 
+      std::cout << " Make A nice plot "<< std::endl; 
+      TCanvas *can = new TCanvas();
+      data.SetMarkerSize(1.0);
+      data.SetMarkerStyle(20);
+      bkgcombfit->Draw("");
+      data.Draw("samep");
+      signal->SetLineColor(2);
+      signal->Draw("sameh");
+      bkgcombfit->SetLineColor(1);
+      h_post_fit->Draw("histsame");
+      TLegend *leg = new TLegend(0.6,0.6,0.89,.89);
+      leg->AddEntry(&data,"data","PEL");
+      leg->AddEntry(h_post_fit,"postfit simplified LH","L");
+      leg->AddEntry(bkgcombfit,"postfit full LH","L");
+      leg->AddEntry(signal,"prefit signal","L");
+      leg->Draw();
+      can->SetLogy();
+      can->SetName("post_fit_plot");
+      can->Write();
+
+      fout->Close();
      }
 
-     fout->cd();
-     tree->Write();
-     corr->Write();
-     fout->Close();
+     dfile->Close();
+     sfile->Close();
+     signalfile->Close();
+     obsdata.Print("v");
+     asimovdata.Print("v");
 
-     // Now make an asimov dataset
-     r.setVal(0); mc.minimize("Minuit2","minimize"); 
-     RooDataSet asimovdata("AsimovData","Asimov in all Bins",obsargset);
- 
-     for (int b=1;b<=nbins;b++){
-        sampleType.setIndex(b-1);
-        //std::cout << sampleType.getLabel() << ", " << sampleType.getIndex() << std::endl;
-        //RooArgSet localset(observation,sampleType);
-   	//obsdata.add(localset);
-	observation.setVal((int)bkg->GetBinContent(b));
-        asimovdata.add(RooArgSet(observation,sampleType));
-     }
-     RooAbsReal *nllA_ = combined_pdf.createNLL(asimovdata,RooFit::ExternalConstraints(RooArgList(constraint_pdf)));
 
-     //double UL = getUpperLimit(nll_,nllA_,&r,0.95);
-     UL = 1.;
-     std::cout << "Upper Limit 95% " << UL << ", Best Fit r=" << minimum_r  << std::endl;
+     return goCLS;
+     /*
+     double UL = getUpperLimit(nll_,nllA_,&r,0.95);
+     std::cout << "Upper Limit 95% " << UL << std::endl;
      return UL;
+     */
+
+
      /*
      RooAbsReal *nll_ = combinedpdfprod.createNLL(obsdata);
      nll_->Print("v");
