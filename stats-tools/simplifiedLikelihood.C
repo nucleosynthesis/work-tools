@@ -1,14 +1,13 @@
 //Simple script to fit a signal with background + systematics and data
 
 const bool isTH1Input=false;
-const std::string channel = "ggH_hinv_13TeV_datacard_SR_monoJ";
-bool justCalcLimit = false;
+const std::string channel = "datacard_SR_monoJ";
+bool justCalcLimit = true;
 bool doExpected = false;
 
 double GetCLs(RooAbsReal *nllD_, RooAbsReal *nllA_, RooRealVar *r, double rVal){
    
-  r->setConstant(false); // how is it that this guy is fitting -ve? 
-  //r->setMin(0);
+  r->setConstant(false);  
   
   RooMinimizer mCA(*nllA_);
   mCA.minimize("Minuit2","minimize"); 
@@ -20,17 +19,26 @@ double GetCLs(RooAbsReal *nllD_, RooAbsReal *nllA_, RooRealVar *r, double rVal){
   double minNllD_ = nllD_->getVal();
   rBestD_ = r->getVal();
 
+  // Conditional fit
   r->setConstant(true);  r->setVal(rVal);
+  
   RooMinimizer mUA(*nllA_);
   mUA.minimize("Minuit2","minimize");
   double nllFixA = nllA_->getVal();
+
   RooMinimizer mUD(*nllD_);
   mUD.minimize("Minuit2","minimize");
   double nllFixD = nllD_->getVal();
 
   double qmu = 2*(nllFixD - minNllD_); if (qmu < 0) qmu = 0;
   if (rVal < rBestD_) qmu=0;
-  if (rBestD_<0 ) qmu=0;
+  if (rBestD_<0 ) {
+  	// could have set minimum of r to 0, but to help fit along, we fix r to 0 and evaluate 
+	r->setVal(0);
+  	mUD.minimize("Minuit2","minimize");
+  	double nllFix0Signal_ = nllD_->getVal();
+ 	qmu =  2*(nllFixD - nllFix0Signal_); if (qmu < 0) qmu = 0;
+  }
   
   double qA  = 2*(nllFixA - minNllA_); if (qA < 0) qA = 0; // shouldn't this always be 0?
 
@@ -43,6 +51,8 @@ double GetCLs(RooAbsReal *nllD_, RooAbsReal *nllA_, RooRealVar *r, double rVal){
     CLsb = ROOT::Math::normal_cdf_c( (qmu + qA)/(2*mos) );
     CLb  = ROOT::Math::normal_cdf_c( (qmu - qA)/(2*mos) );
   }
+
+  r->setConstant(false);
 
   double CLs  = (CLb == 0 ? 0 : CLsb/CLb);
   if (doExpected) {
@@ -287,12 +297,34 @@ double fitSignal(std::string outname="simple.root",std::string signalfilename="m
 	std::cout << " Asi = "<< observation.getVal() << ", besty = " << ((RooRealVar*)muA_.at(b-1))->getVal()  << " before the fit that was " << bkg->GetBinContent(b) << std::endl;
         asimovdata.add(RooArgSet(observation,sampleType));
      }
+     TCanvas *can = new TCanvas();
+     data.SetMarkerSize(1.0);
+     data.SetMarkerStyle(20);
+     bkgcombfit->Draw("");
+     data.Draw("samep");
+     signal->SetLineColor(2);
+     signal->Draw("sameh");
+     bkgcombfit->SetLineColor(1);
+     h_post_fit->Draw("histsame");
+     TLegend *leg = new TLegend(0.6,0.6,0.89,.89);
+     leg->AddEntry(&data,"data","PEL");
+     leg->AddEntry(h_post_fit,"postfit simplified LH","L");
+     leg->AddEntry(bkgcombfit,"postfit full LH","L");
+     leg->AddEntry(signal,"prefit signal","L");
+     leg->Draw();
+     can->SetLogy();
+     can->SaveAs("postfit.pdf");
 
      /* Reset constraints ! */
      RooMultiVarGaussian asimov_constraint_pdf("asimov_constraint_pdf","Constraint for background pdf",xlist_,muA_,Tcovar);
      RooAbsReal *nllA_ = combined_pdf.createNLL(asimovdata,RooFit::ExternalConstraints(RooArgList(asimov_constraint_pdf)));
 
 
+     dfile->Close();
+     sfile->Close();
+     signalfile->Close();
+     obsdata.Print("v");
+     asimovdata.Print("v");
 
      double goCLS = GetCLs(nll_,nllA_,&r,1.);
 
@@ -336,36 +368,9 @@ double fitSignal(std::string outname="simple.root",std::string signalfilename="m
       fout->cd();
       tree->Write();
       //corr->Write();
-      //
-      // nice plot too 
-      std::cout << " Make A nice plot "<< std::endl; 
-      TCanvas *can = new TCanvas();
-      data.SetMarkerSize(1.0);
-      data.SetMarkerStyle(20);
-      bkgcombfit->Draw("");
-      data.Draw("samep");
-      signal->SetLineColor(2);
-      signal->Draw("sameh");
-      bkgcombfit->SetLineColor(1);
-      h_post_fit->Draw("histsame");
-      TLegend *leg = new TLegend(0.6,0.6,0.89,.89);
-      leg->AddEntry(&data,"data","PEL");
-      leg->AddEntry(h_post_fit,"postfit simplified LH","L");
-      leg->AddEntry(bkgcombfit,"postfit full LH","L");
-      leg->AddEntry(signal,"prefit signal","L");
-      leg->Draw();
-      can->SetLogy();
-      can->SetName("post_fit_plot");
-      can->Write();
-
       fout->Close();
      }
 
-     dfile->Close();
-     sfile->Close();
-     signalfile->Close();
-     obsdata.Print("v");
-     asimovdata.Print("v");
 
 
      return goCLS;
