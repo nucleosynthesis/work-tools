@@ -1,4 +1,10 @@
-//Simple script to fit a signal with background + systematics and data
+//Simple script to fit a signal with background + systematics and data, 
+// The input is from a combine workspace + multiDimFit (masking appropriately the signal regions). 
+// The signal is assumed to be from the "mlfit.root" output (prefit) of the combine MaxLikelihoodFit, but some simple re-writes could accept any histogram 
+
+// ranges for LH scans
+double RMIN = -2;
+double RMAX = 2;
 
 const bool isTH1Input=false;
 const std::string channel = "datacard_SR_monoJ";
@@ -134,7 +140,13 @@ double fitSignal(std::string outname="simple.root",std::string signalfilename="m
      TFile *dfile = TFile::Open(data_file.c_str());
      TFile *sfile = TFile::Open(shapes_file.c_str());
      TFile *signalfile = TFile::Open(signalfilename.c_str());
-     std::cout << "Open files  " << signalfilename << std::endl; 
+     std::cout << "Opened files ... " << std::endl; 
+     std::cout << Form(" 	for signal (shapes_prefit/%s/total_signal) ",channel.c_str()) << signalfile->GetName() << std::endl; 
+     std::cout << Form(" 	for bkg    (shapes_fit_b/%s/total_background) ",channel.c_str()) << sfile->GetName() << std::endl; 
+     std::cout << Form(" 	for covar  (shapes_fit_b/%s/total_covar) ",channel.c_str()) << sfile->GetName() << std::endl; 
+     std::cout << Form(" 	for ws    ") << dfile->GetName() << std::endl; 
+     std::cout << Form(" 	++ using that for data too") << std::endl; 
+     std::cout << " .... Save stuff to " << outname << std::endl;
 
      TH1F *bkg      = (TH1F*)sfile->Get(Form("shapes_fit_b/%s/total",channel.c_str()));
      TH1F *bkgpf    = (TH1F*)sfile->Get(Form("shapes_prefit/%s/total_background",channel.c_str()));
@@ -236,7 +248,7 @@ double fitSignal(std::string outname="simple.root",std::string signalfilename="m
      std::cout<< "Made Covariance Gauss" << std::endl;
      
      // Make the signal component 
-     RooRealVar r("r","r",1,0,10);
+     RooRealVar r("r","r",1,0,10);  // remove the range, and re-eval LH I think is best 
      r.removeRange();
      RooArgList signals_;
      for (int b=1;b<=nbins;b++) {
@@ -289,9 +301,9 @@ double fitSignal(std::string outname="simple.root",std::string signalfilename="m
         sampleType.setIndex(b-1);
         //RooArgSet localset(observation,sampleType);
    	//obsdata.add(localset);
-	double exp = (double) ((int)(*(RooRealVar*)slist_.at(b-1)).getVal());
+	double exp = (double) ((*(RooRealVar*)xlist_.at(b-1)).getVal()); // always recentre background systematics 
 	((RooRealVar*)muA_.at(b-1))->setVal(exp); 
-	observation.setVal(exp);
+	observation.setVal(TMath::NInt(exp));
 	h_post_fit->SetBinContent(b,exp);
 	std::cout << " post fit Exp background At " << b << ", Simple code=" << exp << ", combine code=" << bkgcombfit->GetBinContent(b) << " Observed in the data " << data.GetBinContent(b) << std::endl;
 	std::cout << " Asi = "<< observation.getVal() << ", besty = " << ((RooRealVar*)muA_.at(b-1))->getVal()  << " before the fit that was " << bkg->GetBinContent(b) << std::endl;
@@ -336,8 +348,8 @@ double fitSignal(std::string outname="simple.root",std::string signalfilename="m
       tree->Branch("deltaNLL",&deltaNLL_,"deltaNLL/F");
       r.setConstant(false);
 
-      r.setMin(-2);
-      r.setMax(2);
+      r.setMin(RMIN);
+      r.setMax(RMAX);
 
       RooMinimizer *minimG;
       if (doExpected) minimG = new RooMinimizer(*nllA_);
@@ -355,7 +367,7 @@ double fitSignal(std::string outname="simple.root",std::string signalfilename="m
       if (doExpected) minimC = new RooMinimizer(*nllA_);
       else minimC = new RooMinimizer(*nll_);
 
-      for(float rv=-2;rv<=2;rv+=0.1){
+      for(float rv=RMIN;rv<=RMAX;rv+=0.1){
 	r.setVal(rv);
 	r_=rv;
 	minimC->minimize("Minuit2","minimize");
@@ -372,6 +384,7 @@ double fitSignal(std::string outname="simple.root",std::string signalfilename="m
      }
 
 
+     std::cout << " .... Saved stuff to " << outname << std::endl;
 
      return goCLS;
      /*
