@@ -80,8 +80,8 @@ double getUpperLimit(RooAbsReal *nllD_, RooAbsReal *nllA_, RooRealVar *r, double
   rMax = 3; 
 
   TGraph *CLSgraph = new TGraph(); int pt=0;
-  bool cls_min=999;
-  bool cls_max=-999;
+  double  cls_min=999;
+  double  cls_max=-999;
   for (double rV = rMin;rV<=rMax;rV+=0.05){
   	double clsV = GetCLs(nllD_,nllA_,r,rV);
 	CLSgraph->SetPoint(pt,clsV,rV);
