@@ -27,12 +27,14 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold):
     outFile = r.TFile(outFileName,"RECREATE")
     outFile.cd()
     for whichFit in whichFitList:
-        outDir = outFile.mkdir("shapes_{0}".format(whichFit))
+        # get inputs
         iFile = r.TFile(inFile)
         covarianceInput = iFile.Get("shapes_{0}/overall_total_covar".format(whichFit))
         totalBackground = iFile.Get("shapes_{0}/total_background".format(whichFit))
         totalSignal = iFile.Get("shapes_{0}/total_signal".format(whichFit))
         total = iFile.Get("shapes_{0}/total_overall".format(whichFit))
+
+        #make restricted set of bins based on filters + thresh
         binLabels = [covarianceInput.GetXaxis().GetBinLabel(iBin) for iBin in range(1,covarianceInput.GetNbinsX()+1)]
         binLabelsFiltered = []
         binDict = {}
@@ -43,11 +45,15 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold):
                 if totalBackground.GetBinContent(iBinMinusOne+1) > threshold:
                     binLabelsFiltered.append(binLabel)
             binDict[binLabel] = iBinMinusOne+1
+        
+        #define outputs
         outBackground = r.TH1D("total_background","total_background",len(binLabelsFiltered),0,len(binLabelsFiltered))
         outSignal = r.TH1D("total_signal","total_signal",len(binLabelsFiltered),0,len(binLabelsFiltered))
         outTotal = r.TH1D("total","total",len(binLabelsFiltered),0,len(binLabelsFiltered))
         outCovar = r.TH2D("total_covar","total_covar",len(binLabelsFiltered),0,len(binLabelsFiltered),\
                 len(binLabelsFiltered),0,len(binLabelsFiltered))
+
+        #set output contents/errors + labels
         for iBinMinusOne,binLabel in enumerate(binLabelsFiltered):
             outTotal.SetBinError(iBinMinusOne+1,total.GetBinError(binDict[binLabel]))
             outTotal.SetBinContent(iBinMinusOne+1,total.GetBinContent(binDict[binLabel]))
@@ -63,6 +69,9 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold):
             outCovar.GetYaxis().SetBinLabel(iBinMinusOne+1,binLabel)
             for jBinMinusOne,binLabel2 in enumerate(binLabelsFiltered):
                 outCovar.SetBinContent(iBinMinusOne+1,jBinMinusOne+1,covarianceInput.GetBinContent(binDict[binLabel],binDict[binLabel2]))
+
+        #write it!
+        outDir = outFile.mkdir("shapes_{0}".format(whichFit))
         outDir.cd()
         outTotal.Write()
         outBackground.Write()
