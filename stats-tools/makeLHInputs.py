@@ -15,7 +15,7 @@ def parse_args():
     parser = optparse.OptionParser(usage)
 
     parser.add_option('-i', '--inFile',      help='Input mlfit.root file')
-    parser.add_option('-o', '--outFileName',default = "simplified_noData.root",      help='Output file')
+    parser.add_option('-o', '--outFileName',default = "simplified_input.root",      help='Output file')
     parser.add_option('-w', '--whichFits',default = "fit_b,prefit,fit_s",  help='Which fit(s) to use')
     parser.add_option('--filterStrings',default = "*",help='Take only bins with this in name (can give comma separated list)')
     parser.add_option('--config',action="store_true",help='choose bins to combine for aggregate regions (NB this overwrites the filter)')
@@ -23,7 +23,7 @@ def parse_args():
 
     options,args = parser.parse_args()
     return options 
-def makeAggregate(aggregateDict,covarianceInput,totalBackground,totalSignal,total):
+def makeAggregate(aggregateDict,covarianceInput,totalBackground,totalSignal,total,totalData):
     binLabels = [covarianceInput.GetXaxis().GetBinLabel(iBin) for iBin in range(1,covarianceInput.GetNbinsX()+1)]
     binLabelsAggregate = {}
     for aggregateBinLabel,aggregateList in aggregateDict.iteritems():
@@ -37,6 +37,7 @@ def makeAggregate(aggregateDict,covarianceInput,totalBackground,totalSignal,tota
     aggregateCovariance = r.TH2D("total_covar","covariance",len(aggregateDict),0,len(aggregateDict),len(aggregateDict),0,len(aggregateDict))
     aggregateBackground = r.TH1D("total_background","background",len(aggregateDict),0,len(aggregateDict))
     aggregateTotal = r.TH1D("total","total",len(aggregateDict),0,len(aggregateDict))
+    aggregateData = r.TH1D("total_data","data",len(aggregateDict),0,len(aggregateDict))
     aggregateSignal = r.TH1D("total_signal","signal",len(aggregateDict),0,len(aggregateDict))
 
     binNumAgg1 = 1
@@ -45,6 +46,7 @@ def makeAggregate(aggregateDict,covarianceInput,totalBackground,totalSignal,tota
         aggregateTotal.GetXaxis().SetBinLabel(binNumAgg1,label)
         aggregateBackground.GetXaxis().SetBinLabel(binNumAgg1,label)
         aggregateSignal.GetXaxis().SetBinLabel(binNumAgg1,label)
+        aggregateData.GetXaxis().SetBinLabel(binNumAgg1,label)
         aggregateCovariance.GetXaxis().SetBinLabel(binNumAgg1,label)
         aggregateCovariance.GetYaxis().SetBinLabel(binNumAgg1,label)
 
@@ -64,13 +66,17 @@ def makeAggregate(aggregateDict,covarianceInput,totalBackground,totalSignal,tota
             binNumAgg2 += 1
 
         for binNum in binNums:
+            dataX = r.Double(0.)
+            dataY = r.Double(0.) 
+            totalData.GetPoint(binNum,dataX,dataY)
             aggregateBackground.AddBinContent(binNumAgg1,totalBackground.GetBinContent(binNum))
             aggregateTotal.AddBinContent(binNumAgg1,total.GetBinContent(binNum))
+            aggregateData.AddBinContent(binNumAgg1,dataY)
             aggregateSignal.AddBinContent(binNumAgg1,totalSignal.GetBinContent(binNum))
 
         aggregateTotal.SetBinError(binNumAgg1,(aggregateCovariance.GetBinContent(binNumAgg1,binNumAgg1))**0.5)
         binNumAgg1 += 1
-    return aggregateCovariance,aggregateBackground,aggregateSignal,aggregateTotal
+    return aggregateCovariance,aggregateBackground,aggregateSignal,aggregateTotal,aggregateData
 
 
 def consistencyChecks(binLabelsAggregate):
@@ -105,6 +111,7 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
         totalBackground = iFile.Get("shapes_{0}/total_background".format(whichFit))
         totalSignal = iFile.Get("shapes_{0}/total_signal".format(whichFit))
         total = iFile.Get("shapes_{0}/total_overall".format(whichFit))
+        totalData = iFile.Get("shapes_{0}/total_data".format(whichFit))
         totalSignal.SetName("signalTemp")
 
         #make restricted set of bins based on filters + thresh
@@ -112,7 +119,7 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
         binLabelsFiltered = []
         binDict = {}
         if config:
-            outCovar,outBackground,outSignal,outTotal = makeAggregate(aggregateCFG.aggregateDict,covarianceInput,totalBackground,totalSignal,total)
+            outCovar,outBackground,outSignal,outTotal,outData = makeAggregate(aggregateCFG.aggregateDict,covarianceInput,totalBackground,totalSignal,total,totalData)
         else:
             for iBinMinusOne,binLabel in enumerate(binLabels):
                 #check filters
@@ -126,11 +133,16 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
             outBackground = r.TH1D("total_background","total_background",len(binLabelsFiltered),0,len(binLabelsFiltered))
             outSignal = r.TH1D("total_signal","total_signal",len(binLabelsFiltered),0,len(binLabelsFiltered))
             outTotal = r.TH1D("total","total",len(binLabelsFiltered),0,len(binLabelsFiltered))
+            outData = r.TH1D("data","data",len(binLabelsFiltered),0,len(binLabelsFiltered))
             outCovar = r.TH2D("total_covar","total_covar",len(binLabelsFiltered),0,len(binLabelsFiltered),\
                     len(binLabelsFiltered),0,len(binLabelsFiltered))
 
             #set output contents/errors + labels
             for iBinMinusOne,binLabel in enumerate(binLabelsFiltered):
+                dataX = r.Double(0.)
+                dataY = r.Double(0.) 
+                totalData.GetPoint(binDict[binLabel],dataX,dataY)
+                outData.SetBinContent(iBinMinusOne+1,dataY)
                 outTotal.SetBinError(iBinMinusOne+1,total.GetBinError(binDict[binLabel]))
                 outTotal.SetBinContent(iBinMinusOne+1,total.GetBinContent(binDict[binLabel]))
                 outBackground.SetBinContent(iBinMinusOne+1,totalBackground.GetBinContent(binDict[binLabel]))
@@ -141,6 +153,7 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
                 outBackground.GetXaxis().SetBinLabel(iBinMinusOne+1,binLabel)
                 outSignal.GetXaxis().SetBinLabel(iBinMinusOne+1,binLabel)
                 outTotal.GetXaxis().SetBinLabel(iBinMinusOne+1,binLabel)
+                outData.GetXaxis().SetBinLabel(iBinMinusOne+1,binLabel)
                 outCovar.GetXaxis().SetBinLabel(iBinMinusOne+1,binLabel)
                 outCovar.GetYaxis().SetBinLabel(iBinMinusOne+1,binLabel)
                 for jBinMinusOne,binLabel2 in enumerate(binLabelsFiltered):
@@ -151,6 +164,7 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
         outBackground.Write()
         outSignal.Write()
         outCovar.Write()
+        outData.Write()
 
     outFile.Close()
 
