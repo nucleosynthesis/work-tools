@@ -266,18 +266,17 @@ double simplifiedLikelihood(std::string modelName="signal",std::string outname="
     for (int i=0;i<nbins;i++){
 	for (int j=0;j<nbins;j++){
 	    if (ignoreCorrelation){ 
-		    if (i==j){
+		if (i==j){
 		    Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
-			//std::cout << data->GetBinContent(i+1) << "\t" << bkg->GetBinContent(i+1) << "\t" << TMath::Sqrt(covar->GetBinContent(i+1,j+1))/bkg->GetBinContent(i+1) << std::endl;
+		    //std::cout << data->GetBinContent(i+1) << "\t" << bkg->GetBinContent(i+1) << "\t" << TMath::Sqrt(covar->GetBinContent(i+1,j+1))/bkg->GetBinContent(i+1) << std::endl;
 		    }
 		else Tcovar[i][j] = 0;}
-		else{
-		    Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
+	    else{
+		Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
 		}
 	    }
 	}
 	std::cout<< "Made Covariance" << std::endl;
-
 	RooMultiVarGaussian constraint_pdf("constraint_pdf","Constraint for background pdf",xlist_,mu_,Tcovar);
 	std::cout<< "Made Covariance Gauss" << std::endl;
 
