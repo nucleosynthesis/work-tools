@@ -3,7 +3,7 @@
 // The signal is assumed to be from the "mlfit.root" output (prefit) of the combine MaxLikelihoodFit, but some simple re-writes could accept any histogram 
 
 // ranges for LH scans
-double RMIN = -1.;
+double RMIN = -1.0;
 double RMAX = 1.5;
 
 const bool isTH1Input=false;
@@ -88,16 +88,16 @@ double GetExpectedCLs(RooAbsReal *nllA_, RooRealVar *r, double rVal){
     std::cout << "rMIN (asimov), qA = " << rBestA_ << ", " << qA << std::endl; 
     return (clb != 0 ? clsplusb/clb : 0); 
 }
-double getUpperLimit(RooAbsReal *nllD_, RooAbsReal *nllA_, RooRealVar *r, double cl,bool runExpected){
-
-    float rMin = 0.04;
-    float rMax = 3.; 
+double getUpperLimit(RooAbsReal *nllD_, RooAbsReal *nllA_, RooRealVar *r, double cl,bool runExpected,double rMin,double rMax,double steps){
 
     TGraph *CLSgraph = new TGraph(); int pt=0;
     double  cls_min=999;
     double  cls_max=-999;
     double clsV;
-    for (double rV = rMin;rV<=rMax;rV+=0.02){
+    if (runExpected) clsV = GetExpectedCLs(nllA_,r,rMin);
+    else clsV = GetCLs(nllD_,nllA_,r,rMin);
+
+    for (double rV = rMin;rV<=rMax;rV+=steps){
 	if (runExpected) clsV = GetExpectedCLs(nllA_,r,rV);
 	else clsV = GetCLs(nllD_,nllA_,r,rV);
 	CLSgraph->SetPoint(pt,clsV,rV);
@@ -266,189 +266,199 @@ double simplifiedLikelihood(std::string modelName="signal",std::string outname="
     for (int i=0;i<nbins;i++){
 	for (int j=0;j<nbins;j++){
 	    if (ignoreCorrelation){ 
-		if (i==j){
+		    if (i==j){
 		    Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
-		    //std::cout << data->GetBinContent(i+1) << "\t" << bkg->GetBinContent(i+1) << "\t" << TMath::Sqrt(covar->GetBinContent(i+1,j+1))/bkg->GetBinContent(i+1) << std::endl;
-		}
+			//std::cout << data->GetBinContent(i+1) << "\t" << bkg->GetBinContent(i+1) << "\t" << TMath::Sqrt(covar->GetBinContent(i+1,j+1))/bkg->GetBinContent(i+1) << std::endl;
+		    }
 		else Tcovar[i][j] = 0;}
-	    else{
-		Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
+		else{
+		    Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
+		}
 	    }
 	}
-    }
-    std::cout<< "Made Covariance" << std::endl;
-    RooMultiVarGaussian constraint_pdf("constraint_pdf","Constraint for background pdf",xlist_,mu_,Tcovar);
-    std::cout<< "Made Covariance Gauss" << std::endl;
+	std::cout<< "Made Covariance" << std::endl;
+	RooMultiVarGaussian constraint_pdf("constraint_pdf","Constraint for background pdf",xlist_,mu_,Tcovar);
+	std::cout<< "Made Covariance Gauss" << std::endl;
 
-    // Make the signal component 
-     RooRealVar r("r","r",1,0,10);  // remove the range, and re-eval LH I think is best 
-    r.removeRange();
-    RooArgList signals_;
-    for (int b=1;b<=nbins;b++) {
-	//RooProduct *sigF = new RooProduct(Form("signal_%d",b),"signal nominal",RooArgSet(r,RooFit::RooConst(signal->GetBinContent(b))));
-	RooFormulaVar *sigF = new RooFormulaVar(Form("signal_%d",b),Form("@0*%g",signal->GetBinContent(b)),RooArgSet(r));
-	std::cout << " Signal At " << b << ", " << sigF->getVal() << std::endl;
-	signals_.add(*sigF);
-    }
-
-    RooArgList plist_;
-    RooArgList slist_;
-
-    sampleType.setIndex(1); 
-    RooSimultaneous combined_pdf("combined_pdf","combined_pdf",sampleType);
-    for (int b=1;b<=nbins;b++){
-	RooAddition *sum = new RooAddition(Form("splusb_bin_%d",b),Form("Signal plus background in bin %d",b),RooArgList(*((RooRealVar*)(signals_.at(b-1))),*((RooRealVar*)(xlist_.at(b-1)))));
-	RooPoisson  *pois = new RooPoisson(Form("pdf_bin_%d",b),Form("Poisson in bin %d",b),observation,(*sum)); 
-	combined_pdf.addPdf(*pois,Form("%d",b-1));
-	slist_.add(*sum);
-	plist_.add(*pois);
-    }
-    combined_pdf.Print("v");
-    obsdata.Print("v");
-    // Make a prodpdf instread
-    RooProdPdf combinedpdfprod("maybefinalpdf","finalpdf",RooArgList(combined_pdf,constraint_pdf));
-    RooAbsReal *nll_ = combined_pdf.createNLL(obsdata,RooFit::ExternalConstraints(RooArgList(constraint_pdf)));
-    //
-    RooMinimizer m(*nll_);
-    m.minimize("Minuit2","minimize");
-    double nllMin = nll_->getVal();
-    double rMin = r.getVal();
-
-    TFile *fout; 
-    TTree *tree;
-
-    float deltaNLL_;
-    float r_;
-
-    // Now make an asimov dataset
-    // make a histogram for post-fits 
-    TH1F *h_post_fit = (TH1F*)bkgcombfit->Clone(); h_post_fit->SetLineColor(4); 
-    h_post_fit->SetName("simple");
-
-    r.setConstant(true);
-    RooMinimizer mc(*nll_);
-    r.setVal(0); mc.minimize("Minuit2","minimize"); 
-    RooDataSet asimovdata("AsimovData","Asimov in all Bins",obsargset);
-
-    for (int b=1;b<=nbins;b++){
-	sampleType.setIndex(b-1);
-	//RooArgSet localset(observation,sampleType);
-	//obsdata.add(localset);
-	double exp = (double) (TMath::Nint((*(RooRealVar*)slist_.at(b-1)).getVal()));
-	((RooRealVar*)muA_.at(b-1))->setVal(exp); 
-	observation.setVal(exp);
-	h_post_fit->SetBinContent(b,exp);
-	std::cout << " post fit Exp background At " << b << ", Simple code=" << exp << ", combine code=" << bkgcombfit->GetBinContent(b) << " Observed in the data " << data->GetBinContent(b) << std::endl;
-	std::cout << " Asi = "<< observation.getVal() << ", besty = " << ((RooRealVar*)muA_.at(b-1))->getVal()  << " before the fit that was " << bkg->GetBinContent(b) << std::endl;
-	asimovdata.add(RooArgSet(observation,sampleType));
-    }
-    TCanvas *can = new TCanvas();
-    data->SetMarkerSize(1.0);
-    data->SetMarkerStyle(20);
-    bkgcombfit->Draw("");
-    data->Draw("samep");
-    signal->SetLineColor(2);
-    signal->Draw("sameh");
-    bkgcombfit->SetLineColor(1);
-    h_post_fit->Draw("histsame");
-    TLegend *leg = new TLegend(0.6,0.6,0.89,.89);
-    leg->AddEntry(&*data,"data","PEL");
-    leg->AddEntry(h_post_fit,"postfit simplified LH","L");
-    leg->AddEntry(bkgcombfit,"postfit full LH","L");
-    leg->AddEntry(signal,"prefit signal","L");
-    leg->Draw();
-    can->SetLogy();
-    can->SaveAs("postfit.pdf");
-
-    /* Reset constraints ! */
-    RooMultiVarGaussian asimov_constraint_pdf("asimov_constraint_pdf","Constraint for background pdf",xlist_,muA_,Tcovar);
-    RooAbsReal *nllA_ = combined_pdf.createNLL(asimovdata,RooFit::ExternalConstraints(RooArgList(asimov_constraint_pdf)));
-
-
-    // dfile->Close();
-    // sfile->Close();
-    // signalfile->Close();
-    obsdata.Print("v");
-    asimovdata.Print("v");
-
-    double goCLS = GetCLs(nll_,nllA_,&r,1.);
-
-    if (!justCalcLimit){
-
-	fout = new TFile(outnameRDeltaNLL.c_str(),"RECREATE");
-	tree = new TTree("limit","limit");
-	tree->Branch("r",&r_,"r/F");
-	tree->Branch("deltaNLL",&deltaNLL_,"deltaNLL/F");
-	r.setConstant(false);
-
-      r.setMin(RMIN);
-      r.setMax(RMAX);
-
-	RooMinimizer *minimG;
-	if (doExpected) minimG = new RooMinimizer(*nllA_);
-	else minimG = new RooMinimizer(*nll_);
-	minimG->minimize("Minuit2","minimize");
-	r_=r.getVal();
-	deltaNLL_=0;
-	tree->Fill();
-	if (doExpected) nllMin = nllA_->getVal();
-	else nllMin = nll_->getVal();
-
-
-	r.setConstant(true);
-	RooMinimizer *minimC;
-	if (doExpected) minimC = new RooMinimizer(*nllA_);
-	else minimC = new RooMinimizer(*nll_);
-
-      for(float rv=RMIN;rv<=RMAX;rv+=0.1){
-	    r.setVal(rv);
-	    r_=rv;
-	    minimC->minimize("Minuit2","minimize");
-	    if (doExpected) deltaNLL_ = nllA_->getVal() - nllMin; 
-	    else deltaNLL_ = nll_->getVal() - nllMin; 
-	    std::cout << "r="<< rv <<", Dnll="<<deltaNLL_ << std::endl;
-	    tree->Fill();
+	// Make the signal component 
+	 RooRealVar r("r","r",1,0,10);  // remove the range, and re-eval LH I think is best 
+	r.removeRange();
+	RooArgList signals_;
+	for (int b=1;b<=nbins;b++) {
+	    //RooProduct *sigF = new RooProduct(Form("signal_%d",b),"signal nominal",RooArgSet(r,RooFit::RooConst(signal->GetBinContent(b))));
+	    RooFormulaVar *sigF = new RooFormulaVar(Form("signal_%d",b),Form("@0*%g",signal->GetBinContent(b)),RooArgSet(r));
+	    std::cout << " Signal At " << b << ", " << sigF->getVal() << std::endl;
+	    signals_.add(*sigF);
 	}
 
-	fout->cd();
+	RooArgList plist_;
+	RooArgList slist_;
+
+	sampleType.setIndex(1); 
+	RooSimultaneous combined_pdf("combined_pdf","combined_pdf",sampleType);
+	for (int b=1;b<=nbins;b++){
+	    RooAddition *sum = new RooAddition(Form("splusb_bin_%d",b),Form("Signal plus background in bin %d",b),RooArgList(*((RooRealVar*)(signals_.at(b-1))),*((RooRealVar*)(xlist_.at(b-1)))));
+	    RooPoisson  *pois = new RooPoisson(Form("pdf_bin_%d",b),Form("Poisson in bin %d",b),observation,(*sum)); 
+	    combined_pdf.addPdf(*pois,Form("%d",b-1));
+	    slist_.add(*sum);
+	    plist_.add(*pois);
+	}
+	combined_pdf.Print("v");
+	obsdata.Print("v");
+	// Make a prodpdf instread
+	RooProdPdf combinedpdfprod("maybefinalpdf","finalpdf",RooArgList(combined_pdf,constraint_pdf));
+	RooAbsReal *nll_ = combined_pdf.createNLL(obsdata,RooFit::ExternalConstraints(RooArgList(constraint_pdf)));
+	//
+	RooMinimizer m(*nll_);
+	m.minimize("Minuit2","minimize");
+	double nllMin = nll_->getVal();
+	double rMin = r.getVal();
+
+	TFile *fout; 
+	TTree *tree;
+
+	float deltaNLL_;
+	float r_;
+
+	// Now make an asimov dataset
+	// make a histogram for post-fits 
+	TH1F *h_post_fit = (TH1F*)bkgcombfit->Clone(); h_post_fit->SetLineColor(4); 
+	h_post_fit->SetName("simple");
+
+	r.setConstant(true);
+	RooMinimizer mc(*nll_);
+	r.setVal(0); mc.minimize("Minuit2","minimize"); 
+	RooDataSet asimovdata("AsimovData","Asimov in all Bins",obsargset);
+
+	for (int b=1;b<=nbins;b++){
+	    sampleType.setIndex(b-1);
+	    //RooArgSet localset(observation,sampleType);
+	    //obsdata.add(localset);
+	    double exp = (double) (TMath::Nint((*(RooRealVar*)slist_.at(b-1)).getVal()));
+	    ((RooRealVar*)muA_.at(b-1))->setVal(exp); 
+	    observation.setVal(exp);
+	    h_post_fit->SetBinContent(b,exp);
+	    std::cout << " post fit Exp background At " << b << ", Simple code=" << exp << ", combine code=" << bkgcombfit->GetBinContent(b) << " Observed in the data " << data->GetBinContent(b) << std::endl;
+	    std::cout << " Asi = "<< observation.getVal() << ", besty = " << ((RooRealVar*)muA_.at(b-1))->getVal()  << " before the fit that was " << bkg->GetBinContent(b) << std::endl;
+	    asimovdata.add(RooArgSet(observation,sampleType));
+	}
+	TCanvas *can = new TCanvas();
+	data->SetMarkerSize(1.0);
+	data->SetMarkerStyle(20);
+	bkgcombfit->Draw("");
+	data->Draw("samep");
+	signal->SetLineColor(2);
+	signal->Draw("sameh");
+	bkgcombfit->SetLineColor(1);
+	h_post_fit->Draw("histsame");
+	TLegend *leg = new TLegend(0.6,0.6,0.89,.89);
+	leg->AddEntry(&*data,"data","PEL");
+	leg->AddEntry(h_post_fit,"postfit simplified LH","L");
+	leg->AddEntry(bkgcombfit,"postfit full LH","L");
+	leg->AddEntry(signal,"prefit signal","L");
+	leg->Draw();
+	can->SetLogy();
+	can->SaveAs("postfit.pdf");
+
+	/* Reset constraints ! */
+	RooMultiVarGaussian asimov_constraint_pdf("asimov_constraint_pdf","Constraint for background pdf",xlist_,muA_,Tcovar);
+	RooAbsReal *nllA_ = combined_pdf.createNLL(asimovdata,RooFit::ExternalConstraints(RooArgList(asimov_constraint_pdf)));
+
+
+	// dfile->Close();
+	// sfile->Close();
+	// signalfile->Close();
+	obsdata.Print("v");
+	asimovdata.Print("v");
+
+	double goCLS = GetCLs(nll_,nllA_,&r,1.);
+
+	if (!justCalcLimit){
+
+	    fout = new TFile(outnameRDeltaNLL.c_str(),"RECREATE");
+	    tree = new TTree("limit","limit");
+	    tree->Branch("r",&r_,"r/F");
+	    tree->Branch("deltaNLL",&deltaNLL_,"deltaNLL/F");
+	    r.setConstant(false);
+
+	  r.setMin(RMIN);
+	  r.setMax(RMAX);
+
+	    RooMinimizer *minimG;
+	    if (doExpected) minimG = new RooMinimizer(*nllA_);
+	    else minimG = new RooMinimizer(*nll_);
+	    minimG->minimize("Minuit2","minimize");
+	    r_=r.getVal();
+	    deltaNLL_=0;
+	    tree->Fill();
+	    if (doExpected) nllMin = nllA_->getVal();
+	    else nllMin = nll_->getVal();
+
+
+	    r.setConstant(true);
+	    RooMinimizer *minimC;
+	    if (doExpected) minimC = new RooMinimizer(*nllA_);
+	    else minimC = new RooMinimizer(*nll_);
+
+	  for(float rv=RMIN;rv<=RMAX;rv+=0.1){
+		r.setVal(rv);
+		r_=rv;
+		minimC->minimize("Minuit2","minimize");
+		if (doExpected) deltaNLL_ = nllA_->getVal() - nllMin; 
+		else deltaNLL_ = nll_->getVal() - nllMin; 
+		std::cout << "r="<< rv <<", Dnll="<<deltaNLL_ << std::endl;
+		tree->Fill();
+	    }
+
+	    fout->cd();
+	    tree->Write();
+	    //corr->Write();
+	    fout->Close();
+	 std::cout << " .... Saved stuff to " << outnameRDeltaNLL << std::endl;
+	}
+
+
+
+	RooMinimizer *minimG1;
+	if (doExpected) minimG1 = new RooMinimizer(*nllA_);
+	else minimG1 = new RooMinimizer(*nll_);
+	minimG1->minimize("Minuit2","minimize");
+	double rValForRange = 0;
+	if (r.getVal() > 0) rValForRange = r.getVal();
+	double minRangeForLimit = rValForRange-r.getError()*2.;
+	double maxRangeForLimit = rValForRange+r.getError()*5.;
+	if (minRangeForLimit <= 0) minRangeForLimit = 0.01;
+	double stepsForLimit = (maxRangeForLimit-minRangeForLimit)/30.;
+	// double UL = getUpperLimit(nll_,nllA_,&r,0.95,runExpected);
+	// std::cout << "Upper Limit 95% " << UL << std::endl;
+	// return UL;
+	double limit = 99;
+	fout = new TFile(outname.c_str(),"RECREATE");
+	tree = new TTree("limit","limit");
+	tree->Branch("limit",&limit,"limit/D");
+	limit = getUpperLimit(nll_,nllA_,&r,0.95,runExpected,minRangeForLimit,maxRangeForLimit,stepsForLimit);
+	tree->Fill();
+	if (doExpected){
+	    tree->Fill();
+	    tree->Fill();
+	    tree->Fill();
+	    tree->Fill();
+	}
 	tree->Write();
-	//corr->Write();
 	fout->Close();
-     std::cout << " .... Saved stuff to " << outnameRDeltaNLL << std::endl;
-    }
+	std::cout << "Upper Limit 95% " << limit << std::endl;
+	return limit;
 
 
-
-    // double UL = getUpperLimit(nll_,nllA_,&r,0.95,runExpected);
-    // std::cout << "Upper Limit 95% " << UL << std::endl;
-    // return UL;
-    double limit = 99;
-    fout = new TFile(outname.c_str(),"RECREATE");
-    tree = new TTree("limit","limit");
-    tree->Branch("limit",&limit,"limit/D");
-    limit = getUpperLimit(nll_,nllA_,&r,0.95,runExpected);
-    tree->Fill();
-    if (doExpected){
-	tree->Fill();
-	tree->Fill();
-	tree->Fill();
-	tree->Fill();
-    }
-    tree->Write();
-    fout->Close();
-    std::cout << "Upper Limit 95% " << limit << std::endl;
-    return limit;
-
-
-    /*
-       RooAbsReal *nll_ = combinedpdfprod.createNLL(obsdata);
-       nll_->Print("v");
-    // Minimize
-    RooMinimizer m(*nll_);
-    r.setConstant(true);
-    std::cout << combinedpdfprod.getVal() << std::endl;
-    std::cout << constraint_pdf.getVal() << std::endl;
-    //m.Print();
-    m.minimize("Minuit2","minimize");
-    */
+	/*
+	   RooAbsReal *nll_ = combinedpdfprod.createNLL(obsdata);
+	   nll_->Print("v");
+	// Minimize
+	RooMinimizer m(*nll_);
+	r.setConstant(true);
+	std::cout << combinedpdfprod.getVal() << std::endl;
+	std::cout << constraint_pdf.getVal() << std::endl;
+	//m.Print();
+	m.minimize("Minuit2","minimize");
+	*/
 }
