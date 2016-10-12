@@ -277,6 +277,7 @@ double simplifiedLikelihood(std::string modelName="signal",std::string outname="
 	    }
 	}
 	std::cout<< "Made Covariance" << std::endl;
+
 	RooMultiVarGaussian constraint_pdf("constraint_pdf","Constraint for background pdf",xlist_,mu_,Tcovar);
 	std::cout<< "Made Covariance Gauss" << std::endl;
 
