@@ -68,7 +68,7 @@ def makeAggregate(aggregateDict,covarianceInput,totalBackground,totalSignal,tota
         for binNum in binNums:
             dataX = r.Double(0.)
             dataY = r.Double(0.) 
-            totalData.GetPoint(binNum,dataX,dataY)
+            totalData.GetPoint(binNum-1,dataX,dataY)
             aggregateBackground.AddBinContent(binNumAgg1,totalBackground.GetBinContent(binNum))
             aggregateTotal.AddBinContent(binNumAgg1,total.GetBinContent(binNum))
             aggregateData.AddBinContent(binNumAgg1,dataY)
@@ -141,7 +141,7 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
             for iBinMinusOne,binLabel in enumerate(binLabelsFiltered):
                 dataX = r.Double(0.)
                 dataY = r.Double(0.) 
-                totalData.GetPoint(binDict[binLabel],dataX,dataY)
+                totalData.GetPoint(binDict[binLabel]-1,dataX,dataY)
                 outData.SetBinContent(iBinMinusOne+1,dataY)
                 outTotal.SetBinError(iBinMinusOne+1,total.GetBinError(binDict[binLabel]))
                 outTotal.SetBinContent(iBinMinusOne+1,total.GetBinContent(binDict[binLabel]))
