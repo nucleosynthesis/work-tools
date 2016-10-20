@@ -39,12 +39,13 @@ parser.add_option("","--coloroffset",default=1,type='int')
 parser.add_option("","--null",default=0.,type='float')
 parser.add_option("","--labels",default="",type='str')
 parser.add_option("","--styles",default="",type='str')
+parser.add_option("","--mstyles",default="",type='str')
 parser.add_option("","--colors",default="",type='str')
 parser.add_option("","--dnll",default="",type='str')
 parser.add_option("","--relative",default="",type=str)
 parser.add_option("","--cut",default="",type='str')
 parser.add_option("","--signif",default=False,action='store_true',help="try to calculate significance ->  sqrt[2(nll(min)-nll(option.null))] ")
-parser.add_option("","--line",type='string',action='callback',callback=sandy_callback)
+parser.add_option("","--line",type='string',action='callback',callback=sandy_callback,help="Add another line vs x from tree (will use same axis range)")
 parser.add_option("","--lumilab",type='string',default="")
 parser.add_option("","--entrylabel",type='string',default="")
 parser.add_option("","--obsexpected",action='store_true',default=False)
@@ -55,7 +56,6 @@ if options.entrylabel: options.entrylabel = [float(e) for e in options.entrylabe
 nam = options.outnames if options.outnames else options.xvar
 if options.outnames: outtxt= open("%s.txt"%nam,"w")
 
-if len(options.labels): options.labels=options.labels.split(",")
 import ROOT
 import array
 
@@ -188,6 +188,14 @@ lat.SetNDC()
 
 files = args[:]
 
+if len(options.labels): 
+	options.labels=options.labels.split(",")
+	if len(files)>len(options.labels):
+		nlabs = len(options.labels)
+		for i in range(len(files)+1): 
+			if i > nlabs: options.labels.append("")
+print "Labels", options.labels
+
 grs = []
 centres = []
 lows	= []
@@ -204,6 +212,8 @@ if options.colors: COLORS = options.colors.split(",")
 else: COLORS = [i+options.coloroffset for i in range(len(files))] 
 if options.styles: STYLES = options.styles.split(",")
 else: STYLES = [1 for i in files]
+if options.mstyles: MSTYLES = options.mstyles.split(",")
+else : MSTYLES = [20 for i in files]
 
 print "NEW RUN ---------------------------------------//"
 skipFile = False
@@ -211,8 +221,8 @@ for p,fn in enumerate(files):
 
  if not len(options.labels) : names.append(fn.strip(".root"))
  else: 
- 	if p<len(options.labels): names.append(options.labels[p])
-	else: names.append("")
+ 	if len(options.labels[p])>0: names.append(options.labels[p])
+	else: names.append(fn)
 
  if ":" not in fn:
    f = ROOT.TFile(fn)
@@ -243,6 +253,8 @@ for p,fn in enumerate(files):
      if options.dnll!="": dnll = getattr(tree,options.dnll)
      else: dnll = 2*tree.deltaNLL 
      if dnll==0 and options.absNLL: continue
+     if options.yr: 
+       if dnll < float(options.yr.split(":")[0])or dnll > float(options.yr.split(":")[1]) : continue
      #if abs(tree.quantileExpected)==1: continue
      elif abs(dnll)<0.0001 and dnll > 0: 
      	center = xv
@@ -423,6 +435,7 @@ if options.result:
 c.SetGridx()
 c.SetGridy()
 
+
 grs[0].GetXaxis().SetTitle("%s"%options.xvar)
 grs[0].GetYaxis().SetTitle("%s"%options.ylabel)
 grs[0].GetYaxis().SetTitleOffset(1.3)
@@ -436,12 +449,16 @@ if options.result:
 	leg = ROOT.TLegend(0.58,0.87-LHeight,0.87,0.87)
 
 
-else:leg = ROOT.TLegend(0.05,0.72,0.99,0.98)
+else:
+ if options.verb: leg = ROOT.TLegend(0.05,0.72,0.99,0.98)
+ else: 
+ 	leg = ROOT.TLegend(0.12,0.62,0.5,0.88)
+	leg.SetBorderSize(0)
 hEXP = ROOT.TH1F("h","h",1,0,1)  ; hEXP.SetLineWidth(2); hEXP.SetLineColor(1); hEXP.SetLineStyle(2)
 hOBS = ROOT.TH1F("hO","h",1,0,1) ; hOBS.SetLineWidth(2); hOBS.SetLineColor(1)
 leg.SetTextFont(42)
 leg.SetTextSize(0.03)
-leg.SetFillColor(0)
+leg.SetFillColor(ROOT.kWhite)
 #leg.SetBorderSize(0)
 if options.obsexpected: 
     leg.AddEntry(hOBS,"Observed","L")
@@ -454,6 +471,13 @@ allExtLines = []
 drstring=""
 
 if options.points:drstring+="P"
+
+pad = ROOT.TPad("pz","p",0,0,1,1);
+if len(SANDYLINES)>0: pad.SetRightMargin(0.2)
+pad.SetCanvas(c)
+pad.Draw()
+pad.cd()
+
 for j,gr in enumerate(grs):
  #COLOR = j+OFFSET
  #if j+1 == 10: OFFSET+=10
@@ -471,15 +495,13 @@ for j,gr in enumerate(grs):
  	grEXT[jj].SetMarkerSize(0.9)
  if options.points: 
        gr.SetMarkerColor(COLOR)
-       gr.SetMarkerColor(COLOR)
-       gr.SetMarkerStyle(20)
+       gr.SetMarkerStyle(int(MSTYLES[j]))
        gr.SetMarkerSize(0.85)
  if j==0:
        applyRanges(gr) 
        gr.Draw("AL"+drstring)
  else : gr.Draw("L"+drstring)
-
- for jj in range(len(SANDYLINES)): grEXT[jj].Draw("p") 
+ 
  # add +1 Lines 
  ll = ROOT.TLine(lowers[j],0,lowers[j],gr.Eval(lowers[j]))
  lh = ROOT.TLine(uppers[j],0,uppers[j],gr.Eval(uppers[j]))
@@ -501,6 +523,8 @@ for j,gr in enumerate(grs):
    allExtLines.append(lsig)
    allExtLines[-1].Draw()
 
+ legstyle = "L"
+ if options.points: legstyle+="P"
  if options.verb:
  	#fname = (( (names[j].split("/"))[-1] ).split('.'))[0]
 
@@ -508,16 +532,14 @@ for j,gr in enumerate(grs):
 	if options.nofile: fname = ''
  	if options.signif:
 	 if len(fname)>0:
-	  leg.AddEntry(gr,"%s, %s=%.3f^{-%.3f}_{+%.3f} (%.1f#sigma)"%(fname ,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j],signifs[j]),"L")
+	  leg.AddEntry(gr,"%s, %s=%.3f^{-%.3f}_{+%.3f} (%.1f#sigma)"%(fname ,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j],signifs[j]),legstyle)
  	else:
 	 if len(fname)>0:
-	  leg.AddEntry(gr,"%s, %s=%.3f -%.3f +%.3f"%( fname,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j]),"L")
+	  leg.AddEntry(gr,"%s, %s=%.3f -%.3f +%.3f"%( fname,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j]),legstyle)
  else: 
-   if len(names[j])>0: leg.AddEntry(gr,names[j],"L")
+   if len(names[j])>0 : leg.AddEntry(gr,names[j],legstyle)
  
  for jj in range(len(SANDYLINES)): leg.AddEntry(grEXT[jj],SANDYLINES[jj],"p")
-
-if options.legend: leg.Draw()
 
 if len(grs)==1:
  allLinesL[0].SetLineColor(2)
@@ -556,6 +578,26 @@ if options.result:
      else:
        lat.DrawLatex(0.14,0.92,"%s"%options.lumilab)
 
+# change to transparant PAD
+pad1 = ROOT.TPad("pad","pad",0,0,1,1)
+pad1.SetFillStyle(4000)
+pad1.SetFrameFillStyle(0)
+pad1.SetCanvas(c)
+if len(SANDYLINES)>0:
+   pad1.Draw()
+   pad1.SetRightMargin(0.2)
+   pad1.cd()
+   for jj in range(len(SANDYLINES)): 
+        if jj==0:
+		grEXT[jj].Draw("pAY+") 
+		grEXT[jj].GetXaxis().SetLabelSize(0) 
+		grEXT[jj].GetYaxis().SetTitle("Param Value") 
+		grEXT[jj].GetYaxis().SetTitleOffset(2.0) 
+	else: grEXT[jj].Draw("pY+") 
+
+pad1.cd()
+c.cd()
+if options.legend: leg.Draw()
 
 if options.batch:
   c.SaveAs("%s.pdf"%nam)
@@ -573,6 +615,8 @@ for gr in grs:
 	name = name.replace(".","_")
 	name = name.replace("(","_")
 	name = name.replace(")","_")
+	name = name.replace("/","_")
+	name = name.replace("\\","_")
 	print name
 	gr.SetName(name)
 	gr.Write()
