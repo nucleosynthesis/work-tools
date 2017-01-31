@@ -57,9 +57,9 @@ def makeAggregate(aggregateDict,covarianceInput,totalBackground,totalSignal,tota
             for binNum in binNums:
                 for binNum2 in binNums2:
                     totalCov += covarianceInput.GetBinContent(binNum,binNum2)
-                    if label != label2:
-                        totalCov += covarianceInput.GetBinContent(binNum2,binNum)
             aggregateCovariance.Fill(label,label2,totalCov)
+            if label != label2:
+                aggregateCovariance.Fill(label2,label,totalCov)
 
             if label == label2:
                 break
@@ -68,7 +68,7 @@ def makeAggregate(aggregateDict,covarianceInput,totalBackground,totalSignal,tota
         for binNum in binNums:
             dataX = r.Double(0.)
             dataY = r.Double(0.) 
-            totalData.GetPoint(binNum,dataX,dataY)
+            totalData.GetPoint(binNum-1,dataX,dataY)
             aggregateBackground.AddBinContent(binNumAgg1,totalBackground.GetBinContent(binNum))
             aggregateTotal.AddBinContent(binNumAgg1,total.GetBinContent(binNum))
             aggregateData.AddBinContent(binNumAgg1,dataY)
@@ -133,7 +133,7 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
             outBackground = r.TH1D("total_background","total_background",len(binLabelsFiltered),0,len(binLabelsFiltered))
             outSignal = r.TH1D("total_signal","total_signal",len(binLabelsFiltered),0,len(binLabelsFiltered))
             outTotal = r.TH1D("total","total",len(binLabelsFiltered),0,len(binLabelsFiltered))
-            outData = r.TH1D("data","data",len(binLabelsFiltered),0,len(binLabelsFiltered))
+            outData = r.TH1D("total_data","total_data",len(binLabelsFiltered),0,len(binLabelsFiltered))
             outCovar = r.TH2D("total_covar","total_covar",len(binLabelsFiltered),0,len(binLabelsFiltered),\
                     len(binLabelsFiltered),0,len(binLabelsFiltered))
 
@@ -141,7 +141,7 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
             for iBinMinusOne,binLabel in enumerate(binLabelsFiltered):
                 dataX = r.Double(0.)
                 dataY = r.Double(0.) 
-                totalData.GetPoint(binDict[binLabel],dataX,dataY)
+                totalData.GetPoint(binDict[binLabel]-1,dataX,dataY)
                 outData.SetBinContent(iBinMinusOne+1,dataY)
                 outTotal.SetBinError(iBinMinusOne+1,total.GetBinError(binDict[binLabel]))
                 outTotal.SetBinContent(iBinMinusOne+1,total.GetBinContent(binDict[binLabel]))
