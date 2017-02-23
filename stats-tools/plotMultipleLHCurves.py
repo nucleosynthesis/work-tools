@@ -23,6 +23,7 @@ parser.add_option("-r","--result",action="store_true",help="make pretty result")
 parser.add_option("-v","--verb",action="store_true",help="Put Results in Legend")
 parser.add_option("-V","--VERB",action="store_true",help="spitoutlikelihood")
 parser.add_option("-x","--xvar",default="r",type='str',help="x variable in tree")
+parser.add_option("-y","--yvar",default="",type='str',help="y variable, if left blank, will be 2*deltaNLL")
 parser.add_option("-o","--outnames",default="",type='str')
 parser.add_option("-m","--makeplot",default=False,action='store_true',help="makes a root file with a graph of the best fit and errors per file")
 parser.add_option("-L","--legend",default=False,action='store_true',help="make a legend with file names")
@@ -41,7 +42,6 @@ parser.add_option("","--labels",default="",type='str')
 parser.add_option("","--styles",default="",type='str')
 parser.add_option("","--mstyles",default="",type='str')
 parser.add_option("","--colors",default="",type='str')
-parser.add_option("","--dnll",default="",type='str')
 parser.add_option("","--relative",default="",type=str)
 parser.add_option("","--cut",default="",type='str')
 parser.add_option("","--signif",default=False,action='store_true',help="try to calculate significance ->  sqrt[2(nll(min)-nll(option.null))] ")
@@ -238,10 +238,10 @@ for p,fn in enumerate(files):
      tree.GetEntry(i)
      try :
 	  xv = getattr(tree,options.xvar)
+	  if options.yvar!="" : yv = getattr(tree,options.yvar)
      except :
 	 continue
 	 skipFile = True
-     
      skipPoint=False
      if options.cut!="": 
        for cuts in options.cut.split(","):
@@ -250,9 +250,10 @@ for p,fn in enumerate(files):
          if abs( getattr(tree,cuts[0]) - float(cuts[1])) > 0.001: 
 	   skipPoint=True
      if skipPoint: continue
-     if options.dnll!="": dnll = getattr(tree,options.dnll)
-     else: dnll = 2*tree.deltaNLL 
-     if dnll==0 and options.absNLL: continue
+     if options.yvar: dnll = getattr(tree,options.yvar)
+     else:
+       dnll = 2*tree.deltaNLL
+       if dnll==0 and options.absNLL: continue
      if options.yr: 
        if dnll < float(options.yr.split(":")[0])or dnll > float(options.yr.split(":")[1]) : continue
      #if abs(tree.quantileExpected)==1: continue
@@ -348,6 +349,7 @@ for p,fn in enumerate(files):
      if abs(tres[1] - mean) > 0.6*mdiff :continue
      rkeep.append(r)
    rfix=rkeep[:]
+
    if options.clean : res = rfix[0:] 
 
    if len(res)<5:
