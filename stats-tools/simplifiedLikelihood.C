@@ -4,7 +4,9 @@
 
 // ranges for LH scans
 double RMIN = 0;
-double RMAX = 0.1;
+double RMAX = 1.;
+int nPoints = 20;
+
 
 const bool isTH1Input=false;
 const std::string channel = "datacard_SR_monoJ";
@@ -146,7 +148,6 @@ TH1F getData(RooWorkspace *w, TH1F *sigh){
 }
 
 double simplifiedLikelihood(std::string modelName="RA2bin_T1bbbb_1000_800_fast_nominal",std::string outname="ht400Output",std::string ifilename="CovarianceInput.root",std::string sfilename="SignalInput.root", bool runExpected = false,  bool ignoreCorrelation = false,std::string whichFit = "fit_b"){
-
 
     gROOT->SetBatch(1);
     gStyle->SetOptStat(0);
@@ -401,7 +402,7 @@ double simplifiedLikelihood(std::string modelName="RA2bin_T1bbbb_1000_800_fast_n
 	    if (doExpected) minimC = new RooMinimizer(*nllA_);
 	    else minimC = new RooMinimizer(*nll_);
 
-	  for(float rv=RMIN;rv<=RMAX;rv+=0.02){
+	  for(float rv=RMIN;rv<=RMAX;rv+=(RMIN-RMAX)/nPoints){
 		r.setVal(rv);
 		r_=rv;
 		minimC->minimize("Minuit2","minimize");
