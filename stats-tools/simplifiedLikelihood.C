@@ -147,7 +147,7 @@ TH1F getData(RooWorkspace *w, TH1F *sigh){
     return *t; 
 }
 
-double simplifiedLikelihood(std::string modelName="RA2bin_T1bbbb_1000_800_fast_nominal",std::string outname="ht400Output",std::string ifilename="CovarianceInput.root",std::string sfilename="SignalInput.root", bool runExpected = false,  bool ignoreCorrelation = false,std::string whichFit = "fit_b"){
+double simplifiedLikelihood(std::string modelName="shapes_prefit/total_signal",std::string outname="ht400Output",std::string ifilename="CovarianceInput.root",std::string sfilename="SignalInput.root", bool runExpected = false,  bool ignoreCorrelation = false,std::string whichFit = "fit_b"){
 
     gROOT->SetBatch(1);
     gStyle->SetOptStat(0);
@@ -177,8 +177,8 @@ double simplifiedLikelihood(std::string modelName="RA2bin_T1bbbb_1000_800_fast_n
     // TH1F *bkg   = (TH1F*)ifile->Get("ewk");
     // TH2F *covar = (TH2F*)ifile->Get(Form("covariance"));
     // TH1F data  = *(TH1F*)ifile->Get("data");
-    //TH1F *signal= (TH1F*)sfile->Get(modelName.c_str());		// TH1 for signal 
-     TH1F *signal = (TH1F*)sfile->Get("shapes_prefit/total_signal");		// TH1 for signal  
+    TH1F *signal= (TH1F*)sfile->Get(modelName.c_str());		// TH1 for signal 
+     // TH1F *signal = (TH1F*)sfile->Get("shapes_prefit/total_signal");		// TH1 for signal  
     TH1F *bkg      = (TH1F*)ifile->Get(Form("shapes_%s/total_background",whichFit.c_str()));
     TH1F *bkgcombfit    = (TH1F*)ifile->Get(Form("shapes_%s/total_background",whichFit.c_str()));
     TH1F * data = (TH1F*)ifile->Get(Form("shapes_%s/total_data",whichFit.c_str()));
