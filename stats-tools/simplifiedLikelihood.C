@@ -3,8 +3,10 @@
 // The signal is assumed to be from the "mlfit.root" output (prefit) of the combine MaxLikelihoodFit, but some simple re-writes could accept any histogram 
 
 // ranges for LH scans
-double RMIN = -1.0;
-double RMAX = 1.5;
+double RMIN = 0;
+double RMAX = 1.;
+int nPoints = 20;
+
 
 const bool isTH1Input=false;
 const std::string channel = "datacard_SR_monoJ";
@@ -17,12 +19,12 @@ double GetCLs(RooAbsReal *nllD_, RooAbsReal *nllA_, RooRealVar *r, double rVal){
     RooMinimizer mCA(*nllA_);
     mCA.minimize("Minuit2","minimize"); 
     double minNllA_ = nllA_->getVal();
-    rBestA_ = r->getVal();
+    double rBestA_ = r->getVal();
 
     RooMinimizer mCD(*nllD_);
     mCD.minimize("Minuit2","minimize");
     double minNllD_ = nllD_->getVal();
-    rBestD_ = r->getVal();
+    double rBestD_ = r->getVal();
 
     // Conditional fit
     r->setConstant(true);  r->setVal(rVal);
@@ -145,7 +147,7 @@ TH1F getData(RooWorkspace *w, TH1F *sigh){
     return *t; 
 }
 
-double simplifiedLikelihood(std::string modelName="signal",std::string outname="ht400Output",std::string ifilename="ussrInputHt400NoSignalMc/covarianceInput.root",std::string sfilename="ussrInputHt400NoSignalMc/signalHists.root", bool runExpected = false,  bool ignoreCorrelation = false,std::string whichFit = "fit_b"){
+double simplifiedLikelihood(std::string modelName="RA2bin_T1bbbb_1000_800_fast_nominal",std::string outname="ht400Output",std::string ifilename="CovarianceInput.root",std::string sfilename="SignalInput.root", bool runExpected = false,  bool ignoreCorrelation = false,std::string whichFit = "fit_b"){
 
     gROOT->SetBatch(1);
     gStyle->SetOptStat(0);
@@ -175,15 +177,16 @@ double simplifiedLikelihood(std::string modelName="signal",std::string outname="
     // TH1F *bkg   = (TH1F*)ifile->Get("ewk");
     // TH2F *covar = (TH2F*)ifile->Get(Form("covariance"));
     // TH1F data  = *(TH1F*)ifile->Get("data");
-    TH1F *signal= (TH1F*)sfile->Get(modelName.c_str());		// TH1 for signal 
-     // TH1F *signal = (TH1F*)sfile->Get("shapes_prefit/total_signal");		// TH1 for signal  
+    //TH1F *signal= (TH1F*)sfile->Get(modelName.c_str());		// TH1 for signal 
+     TH1F *signal = (TH1F*)sfile->Get("shapes_prefit/total_signal");		// TH1 for signal  
     TH1F *bkg      = (TH1F*)ifile->Get(Form("shapes_%s/total_background",whichFit.c_str()));
     TH1F *bkgcombfit    = (TH1F*)ifile->Get(Form("shapes_%s/total_background",whichFit.c_str()));
-    TH1F * data = (TH1F*)ifile->Get(Form("shapes_%s/data",whichFit.c_str()));
+    TH1F * data = (TH1F*)ifile->Get(Form("shapes_%s/total_data",whichFit.c_str()));
     TH2F *covar  = (TH2F*)ifile->Get(Form("shapes_%s/total_covar",whichFit.c_str()));
     covar->Print();
     signal->Print();
     bkg->Print();
+    data->Print();
 
     TH2F *corr = (TH2F*)covar->Clone();  corr->SetName("correlation");
 
@@ -371,7 +374,6 @@ double simplifiedLikelihood(std::string modelName="signal",std::string outname="
 	obsdata.Print("v");
 	asimovdata.Print("v");
 
-	double goCLS = GetCLs(nll_,nllA_,&r,1.);
 
 	if (!justCalcLimit){
 
@@ -400,7 +402,7 @@ double simplifiedLikelihood(std::string modelName="signal",std::string outname="
 	    if (doExpected) minimC = new RooMinimizer(*nllA_);
 	    else minimC = new RooMinimizer(*nll_);
 
-	  for(float rv=RMIN;rv<=RMAX;rv+=0.1){
+	  for(float rv=RMIN;rv<=RMAX;rv+=(RMIN-RMAX)/nPoints){
 		r.setVal(rv);
 		r_=rv;
 		minimC->minimize("Minuit2","minimize");
@@ -418,7 +420,7 @@ double simplifiedLikelihood(std::string modelName="signal",std::string outname="
 	}
 
 
-
+	r.setConstant(false);
 	RooMinimizer *minimG1;
 	if (doExpected) minimG1 = new RooMinimizer(*nllA_);
 	else minimG1 = new RooMinimizer(*nll_);
@@ -427,8 +429,11 @@ double simplifiedLikelihood(std::string modelName="signal",std::string outname="
 	if (r.getVal() > 0) rValForRange = r.getVal();
 	double minRangeForLimit = rValForRange-r.getError()*2.;
 	double maxRangeForLimit = rValForRange+r.getError()*5.;
-	if (minRangeForLimit <= 0) minRangeForLimit = 0.01;
-	double stepsForLimit = (maxRangeForLimit-minRangeForLimit)/30.;
+	if (maxRangeForLimit <= 0)
+	    return 0;
+	if (minRangeForLimit <= 0) minRangeForLimit = maxRangeForLimit/20.;
+	// double maxRangeForLimit = 0.1;
+	double stepsForLimit = (maxRangeForLimit-minRangeForLimit)/20.;
 	// double UL = getUpperLimit(nll_,nllA_,&r,0.95,runExpected);
 	// std::cout << "Upper Limit 95% " << UL << std::endl;
 	// return UL;
