@@ -402,7 +402,7 @@ double simplifiedLikelihood(std::string modelName="shapes_prefit/total_signal",s
 	    if (doExpected) minimC = new RooMinimizer(*nllA_);
 	    else minimC = new RooMinimizer(*nll_);
 
-	  for(float rv=RMIN;rv<=RMAX;rv+=(RMIN-RMAX)/nPoints){
+	  for(float rv=RMIN;rv<=RMAX;rv+=(RMAX-RMIN)/nPoints){
 		r.setVal(rv);
 		r_=rv;
 		minimC->minimize("Minuit2","minimize");
