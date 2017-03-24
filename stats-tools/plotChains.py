@@ -52,13 +52,25 @@ for i in range(mychain.numEntries()):
   hist.Fill(mychain.get(i).getRealValue("r"), mychain.weight())
 
 hist.Scale(1./hist.Integral())
+hist.SetLineColor(1)
 
-c6a = ROOT.TCanvas()
-hist.Draw()
 vl,vu,trueCL = findSmallestInterval(hist,CL)
+histCL = hist.Clone()
 
-ll = ROOT.TLine(vl,0,vl,0.15); ll.SetLineColor(2)
-lu = ROOT.TLine(vu,0,vu,0.15); lu.SetLineColor(2)
+for b in range(nbins): 
+  if histCL.GetBinLowEdge(b+1) < vl or histCL.GetBinLowEdge(b+2)>vu: histCL.SetBinContent(b+1,0)
+   
+c6a = ROOT.TCanvas()
+
+histCL.SetFillColor(ROOT.kAzure-3)
+histCL.SetFillStyle(1001)
+hist.Draw()
+histCL.Draw("histFsame")
+hist.Draw("histsame")
+
+ll = ROOT.TLine(vl,0,vl,2*hist.GetBinContent(hist.FindBin(vl))); ll.SetLineColor(2); ll.SetLineWidth(2)
+lu = ROOT.TLine(vu,0,vu,2*hist.GetBinContent(hist.FindBin(vu))); lu.SetLineColor(2); lu.SetLineWidth(2)
+
 ll.Draw()
 lu.Draw()
 
