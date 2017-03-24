@@ -1,5 +1,12 @@
 import ROOT
 
+rmin = 0 
+rmax = 30 
+nbins = 100
+CL = 0.95
+chains = "higgsCombineTest.MarkovChainMC.blahblahblah.root"
+
+
 def findSmallestInterval(hist,CL): 
 
  bins = hist.GetNbinsX()
@@ -26,14 +33,8 @@ def findSmallestInterval(hist,CL):
 
  return hist.GetBinLowEdge(best_i), hist.GetBinLowEdge(best_j), val
 
-rmin = 0 
-rmax = 30 
-nbins = 100
-CL = 0.95
 
-fi_ws = ROOT.TFile.Open("simple-counting-experiment.root")
-wspace = fi_ws.Get("w")
-fi_MCMC = ROOT.TFile.Open("higgsCombineLimit_Bayes.MarkovChainMC.mH120.123456.root")
+fi_MCMC = ROOT.TFile.Open(chains)
 
 # Sum up all of the chains / or could take the average limit
 mychain=0
