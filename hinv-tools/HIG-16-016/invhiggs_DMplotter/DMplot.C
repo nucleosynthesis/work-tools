@@ -1,3 +1,5 @@
+// we may want to improve this by using the improved fN : https://arxiv.org/pdf/1708.02245.pdf
+
 bool isPrelim=false;
 
 double const Mn = 0.93895;
