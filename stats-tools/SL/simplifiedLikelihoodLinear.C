@@ -183,8 +183,8 @@ double GetCLs(RooAbsReal *nllD_, RooAbsReal *nllA_, RooRealVar *r, double rVal){
     double CLs  = (CLb == 0 ? 0 : CLsb/CLb);
     std::cout << "at r = " << rVal <<  ", CLsplusb = " << CLsb << ", CLb " << CLb << ", CLs " << CLs << std::endl;
     std::cout << "rMIN (data) = " << rBestD_ << ", qmu = " << qmu << ", qA = " << qA <<std::endl;
-    return CLsb;
-    //return CLs;
+    //return CLsb;
+    return CLs;
 
 }
 
