@@ -12,6 +12,11 @@ def sandy_callback(option, opt_str,value,parser):
 	print "add ", value
 	SANDYLINES.append(str(value))
 
+CLEVELS = []
+def clevels_callback(option, opt_str,value,parser):
+	print "X-ing at ", value
+	CLEVELS.append(float(value))
+
 from optparse import OptionParser
 parser=OptionParser()
 parser.add_option("-e","--expected",default=False,action="store_true",help="Run expected")
@@ -31,11 +36,13 @@ parser.add_option("","--runSpline",default=False,action='store_true',help="Creat
 parser.add_option("","--nofile",default=False,action='store_true',help="Remove filename from Legend")
 parser.add_option("","--Title",default="",type='str')
 parser.add_option("","--absNLL",default=False,action='store_true')
+parser.add_option("","--reMinimize",default=False,action='store_true')
 parser.add_option("","--xl",default="",type='str')
 parser.add_option("","--xr",default="",type='str')
 parser.add_option("","--yr",default="",type='str')
 parser.add_option("","--ylabel",default="-2#Delta Log(L)",type='str')
-parser.add_option("","--cl",default="1",type='float')
+#parser.add_option("","--cl",default="1",type='float')
+parser.add_option("","--cl",type='string',action='callback',callback=clevels_callback,help="Add another crossing")
 parser.add_option("","--coloroffset",default=1,type='int')
 parser.add_option("","--null",default=0.,type='float')
 parser.add_option("","--labels",default="",type='str')
@@ -76,7 +83,7 @@ outTree.Branch("%s_d"%options.xvar,errLV,"%s_d/D"%options.xvar)
 if options.entrylabel: outTree.Branch("entrylabel",entlabel,"entrylabel/D")
 
 if options.runSpline: ROOT.gSystem.Load("libHiggsAnalysisCombinedLimit")
-
+if len(CLEVELS) == 0: CLEVELS = [1.]
 def makeRelative(gr, value): 
   rel_val = gr.Eval(value)
   x = ROOT.Double()
@@ -217,6 +224,7 @@ else : MSTYLES = [20 for i in files]
 
 print "NEW RUN ---------------------------------------//"
 skipFile = False
+grEXT = []
 for p,fn in enumerate(files):
 
  if not len(options.labels) : names.append(fn.strip(".root"))
@@ -229,7 +237,7 @@ for p,fn in enumerate(files):
    
    tree = f.Get("limit")
    gr = ROOT.TGraph()
-   grEXT = [ROOT.TGraph() for SS in SANDYLINES]
+   grEXTl = [ROOT.TGraph() for SS in SANDYLINES]
    c=0
    res = []
 
@@ -262,7 +270,7 @@ for p,fn in enumerate(files):
 	cenDNLL = dnll
      if options.absNLL: res.append([xv,2*tree.absNLL])
      else :res.append([xv,dnll])
-     for jj in range(len(SANDYLINES)): grEXT[jj].SetPoint(i,xv,getattr(tree,'%s'%SANDYLINES[jj]))
+     for jj in range(len(SANDYLINES)): grEXTl[jj].SetPoint(i,xv,getattr(tree,'%s'%SANDYLINES[jj]))
 
    if skipFile: 
 	  print "Tree has no attribute ", options.xvar
@@ -362,16 +370,25 @@ for p,fn in enumerate(files):
    #print res
    #sys.exit()
    # reset to 0
-   #if not options.absNLL:
-   # for i in range(len(res)): res[i][1]-=nllmin
+   if options.reMinimize:
+    for i in range(len(res)): res[i][1]-=nllmin
 
    m,m1 = findQuantile(res,0);
-   l,h  = findQuantile(res,options.cl);
+
+   PLS = []
+   PHS = []
+   for cl in CLEVELS:
+     l,h  = findQuantile(res,cl);
+     PLS.append(l)
+     PHS.append(h)
 
    if  options.expected:
 	  for r in res: r[0]-=m-options.shift
 	  m,m1 = findQuantile(res,0);
-	  l,h  = findQuantile(res,options.cl);
+          for cl in CLEVELS:
+	    l,h  = findQuantile(res,cl);
+     	    PLS.append(l)
+     	    PHS.append(h)
 
    for r,nll in res:
 	  gr.SetPoint(c,r,(nll))
@@ -390,17 +407,27 @@ for p,fn in enumerate(files):
 		gr.GetPoint(n,XP,YP);
 		res.append([XP,YP])
 	m,m1 = findQuantile(res,0);
-	l,h  = findQuantile(res,options.cl);
+
+	PLS = []
+	PHS = []
+	for cl in CLEVELS:
+	  l,h  = findQuantile(res,cl);
+     	  PLS.append(l)
+     	  PHS.append(h)
 	extfiles.append(tmpfile)
         gr.SetName(names[p])
         grs.append(gr.Clone())
 
  centres.append(m)
- lows.append(m-l)
- highs.append(h-m)
+ [lows.append(m-l) for l in PLS]
+ [highs.append(h-m) for h in PHS]
 
- print "%s, %s = %g(%g) -%g +%g  (%g %g) "%(names[p],options.xvar,m,m1,m-l,h-m,l,h)
- if options.outnames: outtxt.write("File %s, %s = %g(%g)  -%g +%g (%g %g) \n"%(fn,options.xvar,m,m1,m-l,h-m,l,h))
+ for cli, cl in enumerate(CLEVELS): 
+   l = -lows[cli] + m
+   h = highs[cli] + m
+   print "%s, %s = %g(%g) -%g +%g  (%g %g) (xing=%g)"%(names[p],options.xvar,m,m1,m-l,h-m,l,h,cl)
+ if options.outnames: 
+   outtxt.write("File %s, %s = %g(%g)  -%g +%g (%g %g) (xing=%g)\n"%(fn,options.xvar,m,m1,m-l,h-m,l,h,cl))
  signif = 0
  if options.signif: 
 	nll0 = gr.Eval(options.null)
@@ -413,10 +440,12 @@ for p,fn in enumerate(files):
  errHV[0]  = h-m
  errLV[0]  = m-l
  if len(options.entrylabel): entlabel[0] = options.entrylabel[p]
- lowers.append(l)
- uppers.append(h)
+ lowers.append(PLS)
+ uppers.append(PHS)
  signifs.append(signif)
  outTree.Fill()
+
+ grEXT.append(grEXTl)
 
 # Now set the graphs relative to some point if requested 
 if options.relative!="": 
@@ -442,13 +471,19 @@ grs[0].GetXaxis().SetTitle("%s"%options.xvar)
 grs[0].GetYaxis().SetTitle("%s"%options.ylabel)
 grs[0].GetYaxis().SetTitleOffset(1.3)
 grs[0].GetXaxis().SetTitleOffset(1.3)
-if options.result: grs[0].GetYaxis().SetTitleSize(0.045)
-if options.result: grs[0].GetXaxis().SetTitleSize(0.045)
+if options.result: 
+  grs[0].GetYaxis().SetTitleSize(0.045)
+  grs[0].GetXaxis().SetTitleSize(0.045)
+  grs[0].GetYaxis().SetTitleOffset(1.1)
+  grs[0].GetXaxis().SetTitleOffset(1.1)
+
+leg = 0
 
 if options.result:
 	LHeight = (0.87-0.75)/2
 	LHeight*=len(filter(lambda x: len(x)>0,names))
 	leg = ROOT.TLegend(0.58,0.87-LHeight,0.87,0.87)
+	leg.SetFillColor(10)
 
 
 else:
@@ -492,9 +527,9 @@ for j,gr in enumerate(grs):
  gr.SetLineStyle(STYLE)
  gr.SetTitle("")
  for jj in range(len(SANDYLINES)): 
- 	grEXT[jj].SetMarkerColor(COLOR)
- 	grEXT[jj].SetMarkerStyle(20+jj)
- 	grEXT[jj].SetMarkerSize(0.9)
+ 	grEXT[j][jj].SetMarkerColor(COLOR)
+ 	grEXT[j][jj].SetMarkerStyle(20+jj)
+ 	grEXT[j][jj].SetMarkerSize(0.9)
  if options.points: 
        gr.SetMarkerColor(COLOR)
        gr.SetMarkerStyle(int(MSTYLES[j]))
@@ -505,18 +540,22 @@ for j,gr in enumerate(grs):
  else : gr.Draw("L"+drstring)
  
  # add +1 Lines 
- ll = ROOT.TLine(lowers[j],0,lowers[j],gr.Eval(lowers[j]))
- lh = ROOT.TLine(uppers[j],0,uppers[j],gr.Eval(uppers[j]))
- ll.SetLineColor(COLOR)
- ll.SetLineStyle(STYLE)
- lh.SetLineStyle(STYLE)
- ll.SetLineWidth(2)
- lh.SetLineColor(COLOR)
- lh.SetLineWidth(2) 
- allLinesL.append(ll.Clone())
- allLinesU.append(lh.Clone())
- #allLinesL[j].Draw()
- #allLinesU[j].Draw()
+ for cli, cl in enumerate(CLEVELS):
+   
+   ll = ROOT.TLine(lowers[j][cli],0,lowers[j][cli],gr.Eval(lowers[j][cli]))
+   lh = ROOT.TLine(uppers[j][cli],0,uppers[j][cli],gr.Eval(uppers[j][cli]))
+   ll.SetLineColor(COLOR)
+   ll.SetLineStyle(STYLE)
+   lh.SetLineStyle(STYLE)
+   ll.SetLineWidth(1)
+   lh.SetLineColor(COLOR)
+   lh.SetLineWidth(1) 
+   allLinesL.append(ll.Clone())
+   allLinesU.append(lh.Clone())
+ 
+   allLinesL[-1].Draw()
+   allLinesU[-1].Draw()
+ 
  if options.signif:
    lsig = ROOT.TLine(options.null,0,options.null,gr.GetYaxis().GetXmax())
    lsig.SetLineColor(1)
@@ -534,28 +573,36 @@ for j,gr in enumerate(grs):
 	if options.nofile: fname = ''
  	if options.signif:
 	 if len(fname)>0:
-	  leg.AddEntry(gr,"%s, %s=%.3f^{-%.3f}_{+%.3f} (%.1f#sigma)"%(fname ,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j],signifs[j]),legstyle)
+	  leg.AddEntry(gr,"%s, %s=%.3f^{-%.3f}_{+%.3f} (xing=%.2f) (%.1f#sigma)"%(fname ,options.xvar,centres[j],centres[j]-lowers[j][0],uppers[j][0]-centres[j],CLEVELS[0],signifs[j]),legstyle)
+	  if len(CLEVELS)>1: 
+	    for cli,cl in enumerate(CLEVELS[1:]): 
+	  	leg.AddEntry(gr,"       ^{-%.3f}_{+%.3f} (xing=%.2f) (%.1f#sigma)"%(centres[j]-lowers[j][cli+1],uppers[j][cli+1]-centres[j],cl,signifs[j]),"")
  	else:
 	 if len(fname)>0:
-	  leg.AddEntry(gr,"%s, %s=%.3f -%.3f +%.3f"%( fname,options.xvar,centres[j],centres[j]-lowers[j],uppers[j]-centres[j]),legstyle)
+	  leg.AddEntry(gr,"%s, %s=%.3f -%.3f +%.3f (xing=%.2f)"%( fname,options.xvar,centres[j],centres[j]-lowers[j][0],uppers[j][0]-centres[j],CLEVELS[0]),legstyle)
+	  if len(CLEVELS)>1: 
+	    for cli,cl in enumerate(CLEVELS[1:]): 
+	        leg.AddEntry(gr,"       -%.3f +%.3f (xing=%.2f)"%( centres[j]-lowers[j][cli+1],uppers[j][cli+1]-centres[j],cl),"")
  else: 
    if len(names[j])>0 : leg.AddEntry(gr,names[j],legstyle)
  
- for jj in range(len(SANDYLINES)): leg.AddEntry(grEXT[jj],SANDYLINES[jj],"p")
+ for jj in range(len(SANDYLINES)): leg.AddEntry(grEXT[0][jj],SANDYLINES[jj],"p")
 
-if len(grs)==1:
- allLinesL[0].SetLineColor(2)
- allLinesU[0].SetLineColor(2)
+#if len(grs)==1:
+ #allLinesL[0].SetLineColor(2)
+ #allLinesU[0].SetLineColor(2)
 
-if options.xr: 
-
+ALLHLINES = []
+for cli,cl in enumerate(CLEVELS):
+  if options.xr: 
 	XRANGE=(options.xr).split(":")
-	LL = ROOT.TLine(float(XRANGE[0]),options.cl,float(XRANGE[1]),options.cl);
+	LL = ROOT.TLine(float(XRANGE[0]),cl,float(XRANGE[1]),cl);
 
-else: LL = ROOT.TLine(gr.GetXaxis().GetXmin(),options.cl,gr.GetXaxis().GetXmax(),options.cl); 
-LL.SetLineColor(2); LL.SetLineWidth(2)
-LL.SetLineStyle(2)
-if not options.result: LL.Draw()
+  else: LL = ROOT.TLine(gr.GetXaxis().GetXmin(),cl,gr.GetXaxis().GetXmax(),cl); 
+  LL.SetLineColor(2); LL.SetLineWidth(2)
+  LL.SetLineStyle(2)
+  ALLHLINES.append(LL)
+  if not options.result: LL.Draw()
 
 if len(options.Title)>0:
   print "Add title"
@@ -589,13 +636,14 @@ if len(SANDYLINES)>0:
    pad1.Draw()
    pad1.SetRightMargin(0.2)
    pad1.cd()
-   for jj in range(len(SANDYLINES)): 
-        if jj==0:
-		grEXT[jj].Draw("pAY+") 
-		grEXT[jj].GetXaxis().SetLabelSize(0) 
-		grEXT[jj].GetYaxis().SetTitle("Param Value") 
-		grEXT[jj].GetYaxis().SetTitleOffset(2.0) 
-	else: grEXT[jj].Draw("pY+") 
+   for j in range(len(grEXT)):
+    for jj in range(len(SANDYLINES)): 
+        if jj==0 and j==0:
+		grEXT[j][jj].Draw("pAY+") 
+		grEXT[j][jj].GetXaxis().SetLabelSize(0) 
+		grEXT[j][jj].GetYaxis().SetTitle("Param Value") 
+		grEXT[j][jj].GetYaxis().SetTitleOffset(2.0) 
+	else: grEXT[j][jj].Draw("pY+") 
 
 pad1.cd()
 c.cd()
