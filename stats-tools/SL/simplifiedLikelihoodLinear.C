@@ -468,7 +468,23 @@ double simplifiedLikelihoodLinear(){
     }
     // Make a prodpdf instread
     //RooProdPdf combinedpdfprod("maybefinalpdf","finalpdf",RooArgList(combined_pdf,constraint_pdf));
-    //RooAbsReal *nll_ = combined_pdf.createNLL(obsdata,RooFit::ExternalConstraints(RooArgList(constraint_pdf)));
+    
+    /* Uncomment for RooFit stylee */
+    /*
+    TMatrixDSym TDiag(nbins);
+    for (int i=0;i<nbins;i++){
+	for (int j=0;j<nbins;j++){
+		if (i==j){
+		    TDiag[i][j] = 1;
+		} else {
+		    TDiag[i][j] = 0;
+		}
+	 }
+    }
+    RooMultiVarGaussian constraint_pdf("constraint_pdf","Constraint for background pdf",philist_,mu_,TDiag);
+    RooAbsReal *nll_ = combined_pdf.createNLL(obsdata,RooFit::ExternalConstraints(RooArgList(constraint_pdf)));
+    **/
+
     RooRealVar *nll_ =(RooRealVar*) NLLDiagonal(slist_,*data, philist_,mu_);
 
     r.setVal(0.0);
@@ -609,7 +625,7 @@ double simplifiedLikelihoodLinear(){
 	    r.setVal(rv);
 	    r_=rv;
 	    Minimize(*minimC); //->minimize("Minuit","minimize");
-	    deltaNLL_  = nll_->getVal() - nllMin;
+	    deltaNLL_  = (nll_->getVal() - nllMin);
 	    //nuisanceLL = -1*constraint_pdf.getLogVal();
 	    if (verb) std::cout << "r="<< rv <<", Dnll="<<deltaNLL_ << std::endl;
 
