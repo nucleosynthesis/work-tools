@@ -11,6 +11,7 @@ bool gMultiplicative=false;
 bool justCalcLimit = false;
 bool ignoreCorrelation = false;
 bool includeQuadratic  = false;
+bool gNoSystematic = false;
 bool verb=1;
 
 // for LH scanning
@@ -321,6 +322,15 @@ double simplifiedLikelihoodLinear(){
 	    } else {
 		Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
 		Tcorr[i][j]  = corr->GetBinContent(i+1,j+1);
+
+		// If using the SL Quadratic, we redefine the correlation matrix !?!?!?!
+		if (includeQuadratic){
+			double m12 = covar->GetBinContent(i+1,j+1);
+			
+	  		double Ai,Bi,Ci; getCoefficiencts(&Ai,&Bi,&Ci,i+1);
+	  		double Aj,Bj,Cj; getCoefficiencts(&Aj,&Bj,&Cj,j+1);
+			Tcorr[i][j] = ( 1./(2*Ci*Cj) )*(TMath::Sqrt(Bi*Bj*Bi*Bj + 4*Ci*Cj*m12) - Bi*Bj );
+		}
 		if (verb) std::cout << " Correlation (" << i+1 << "," << j+1 << ") " << corr->GetBinContent(i+1,j+1) << std::endl;
 	    }
 	 }
@@ -335,6 +345,7 @@ double simplifiedLikelihoodLinear(){
 
     for (int b=1;b<=nbins;b++){
 	RooRealVar *phi = new RooRealVar(Form("phi_%d",b),Form("free parameter - %d",b),0,-5,5);
+	if (gNoSystematic) phi->setConstant(true);
 	philist_.add(*phi);
     }
 
@@ -345,6 +356,8 @@ double simplifiedLikelihoodLinear(){
     for (int i=0;i<nbins;i++){
         RooArgList theta_components;
         for (int j=0;j<nbins;j++){
+	   if ( eigenv[j] <= 0 ) eigenv[j] = 0 ;
+	   if (verb) std::cout << " Eigen-velue (lambda)  " << j << " = " << eigenv[j] << std::endl;  
 	   double sqrtLambda = TMath::Sqrt(eigenv[j]);
 	   double E 	     = eigenvectors[i][j];  
 	   RooFormulaVar *c = new RooFormulaVar(Form("c_%d_%d",i+1,j+1),Form("%g*%g*@0",sqrtLambda,E),RooArgList(*(philist_.at(j))));
