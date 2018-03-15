@@ -57,7 +57,7 @@ class simplified_likelihood_linear:
   R = numpy.linspace(self.rmin, self.rmax, np)
   C = [self.minimizer(r) for r in R]
 
-  print zip(R, C)
+  #print zip(R, C)
   plt.plot(R,C)
   plt.ylabel("-2 Log(L)")
   plt.xlabel("$\mu$")
