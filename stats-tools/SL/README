@@ -1,6 +1,0 @@
-Checkout SL code using sparse checkout 
-
-curl -s https://raw.githubusercontent.com/nucleosynthesis/work-tools/master/stats-tools/SL/sparse-checkout-SL-ssh.sh  > sc.sh
-chmod +x sc.sh 
-./sc.sh 
-cd work-tools/stats-tools/SL
