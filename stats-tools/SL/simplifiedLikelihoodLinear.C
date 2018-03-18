@@ -58,11 +58,11 @@ void getCoefficiencts(double *A, double *B, double *C, int bin){
     double m1 = globalBackground[bin-1];
     double m2 = globalVariance[bin-1];
     double m3 = globalThirdMoments[bin-1];
-    if (8*m2*m2*m2 >= m3*m3) *C = -2*(TMath::Sqrt(2*m2))*TMath::Cos(4*pi/3. + 1./3. * TMath::ATan(TMath::Sqrt((8*m2*m2*m2-m3*m3)/(m3*m3))) );
-    else *C = -2*(TMath::Sqrt(2*m2))*TMath::CosH(-1/3.*TMath::ATanH(TMath::Sqrt((-8*m2*m2*m2+m3*m3)/(m3*m3)))) ;
-    if (m2 > (*C)*(*C)/2.) *B = TMath::Sqrt(m2-(*C)*(*C)/2.);
-    else *B = TMath::Sqrt(-m2+(*C)*(*C)/2.);
-    *A = m1 - (*C)/2.;
+    if (8*m2*m2*m2 >= m3*m3) *C = (TMath::Sqrt(2*m2))*TMath::Cos(4*pi/3. + 1./3. * TMath::ATan(TMath::Sqrt((8*m2*m2*m2-m3*m3)/(m3*m3))) );
+    else *C = (TMath::Sqrt(2*m2))*TMath::CosH((1/3.)*TMath::ATanH(TMath::Sqrt((-8*m2*m2*m2+m3*m3)/(m3*m3)))) ;
+    if (m2 > 2*(*C)*(*C)) *B = TMath::Sqrt(m2-2*(*C)*(*C));
+    else *B = TMath::Sqrt(-m2+2*(*C)*(*C));
+    *A = m1 - 2*(*C);
     
 }
 void getCoefficienctsOld(double *A, double *B, double *C, int bin){
@@ -336,19 +336,20 @@ double simplifiedLikelihoodLinear(){
 		Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
 		Tcorr[i][j]  = corr->GetBinContent(i+1,j+1);
 
-		// If using the SL Quadratic, we redefine the correlation matrix !?!?!?!
+		// If using the SL Quadratic, we redefine the correlation matrix explicitly, but its exactly the same.
 		if (includeQuadratic){
 			double m12 = covar->GetBinContent(i+1,j+1);
 			
 	  		double Ai,Bi,Ci; getCoefficiencts(&Ai,&Bi,&Ci,i+1);
 	  		double Aj,Bj,Cj; getCoefficiencts(&Aj,&Bj,&Cj,j+1);
-			Tcorr[i][j] = ( 1./(2*Ci*Cj) )*(TMath::Sqrt(Bi*Bj*Bi*Bj + 4*Ci*Cj*m12) - Bi*Bj );
+			Tcorr[i][j] = ( 1./(4*Ci*Cj) )*(TMath::Sqrt(Bi*Bj*Bi*Bj + 8*Ci*Cj*m12) - Bi*Bj );
 		}
 		if (verb) std::cout << " Correlation (" << i+1 << "," << j+1 << ") " << corr->GetBinContent(i+1,j+1) << std::endl;
 	    }
 	 }
     }
 
+    return 0;
     // Now we will build up the pdf model -> in the end we will feed this into our own likelihood 
     // 1. diagonalize the covariance matrix to get the directions for the "independant" parameters 
 
@@ -449,7 +450,7 @@ double simplifiedLikelihoodLinear(){
 	  if (verb) {
 	    std::cout << " Coefficients " << "A = " << A << ", B =  " << B << ", C = " << C <<std::endl;
 	}
-	  x_ = new RooFormulaVar(Form("exp_bin_%d",b),Form("%g+@0*%g+@0*@0*%g",A,B,C/2),RooArgList(*theta_));
+	  x_ = new RooFormulaVar(Form("exp_bin_%d",b),Form("%g+@0*%g+@0*@0*%g",A,B,C),RooArgList(*theta_));
 	} else {
 	  x_ = new RooFormulaVar(Form("exp_bin_%d",b),Form("%g+@0*%g",bkgy,kappa),RooArgList(*theta_));
         }
