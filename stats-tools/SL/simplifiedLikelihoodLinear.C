@@ -54,7 +54,7 @@ void Minimize(RooMinimizer &minim){
 double globalVariance[(int) MAXBINS] ;  
 void getCoefficiencts(double *A, double *B, double *C, int bin){
     // mean 
-    double pi = TMath::Pi();
+    /*
     double m1 = globalBackground[bin-1];
     double m2 = globalVariance[bin-1];
     double m3 = globalThirdMoments[bin-1];
@@ -63,7 +63,16 @@ void getCoefficiencts(double *A, double *B, double *C, int bin){
     if (m2 > 2*(*C)*(*C)) *B = TMath::Sqrt(m2-2*(*C)*(*C));
     else *B = TMath::Sqrt(-m2+2*(*C)*(*C));
     *A = m1 - 2*(*C);
-    
+    */
+    double pi = TMath::Pi();
+    double m1 = globalBackground[bin-1];
+    double m2 = globalVariance[bin-1];
+    double m3 = globalThirdMoments[bin-1];
+
+     *C = -1*(m3/TMath::Abs(m3))*(TMath::Sqrt(2*m2))*TMath::Cos( (4./3)*pi + (1./3)*TMath::ATan( TMath::Sqrt(8.0*(m2*m2*m2)/(m3*m3)-1.0) ) ) ;
+     *B = TMath::Sqrt(m2-2*(*C)*(*C));
+     *A = m1-(*C)
+
 }
 void getCoefficienctsOld(double *A, double *B, double *C, int bin){
     // mean 
