@@ -71,7 +71,7 @@ void getCoefficiencts(double *A, double *B, double *C, int bin){
 
      *C = -1*(m3/TMath::Abs(m3))*(TMath::Sqrt(2*m2))*TMath::Cos( (4./3)*pi + (1./3)*TMath::ATan( TMath::Sqrt(8.0*(m2*m2*m2)/(m3*m3)-1.0) ) ) ;
      *B = TMath::Sqrt(m2-2*(*C)*(*C));
-     *A = m1-(*C)
+     *A = m1-(*C);
 
 }
 void getCoefficienctsOld(double *A, double *B, double *C, int bin){
@@ -345,7 +345,7 @@ double simplifiedLikelihoodLinear(){
 		Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
 		Tcorr[i][j]  = corr->GetBinContent(i+1,j+1);
 
-		// If using the SL Quadratic, we redefine the correlation matrix explicitly, but its exactly the same.
+		// If using the SL Quadratic, we redefine the correlation matrix explicitly
 		if (includeQuadratic){
 			double m12 = covar->GetBinContent(i+1,j+1);
 			
@@ -358,7 +358,7 @@ double simplifiedLikelihoodLinear(){
 	 }
     }
 
-    return 0;
+    //return 0;
     // Now we will build up the pdf model -> in the end we will feed this into our own likelihood 
     // 1. diagonalize the covariance matrix to get the directions for the "independant" parameters 
 
@@ -373,10 +373,11 @@ double simplifiedLikelihoodLinear(){
     }
 
     //return 0;
-    // 2. build up the theta terms ( for b + theta ),  
+    // 2. build up the theta terms ( for b + theta ), 
     RooArgList thetalist_;
     
     for (int i=0;i<nbins;i++){
+        /*
         RooArgList theta_components;
         for (int j=0;j<nbins;j++){
 	   if ( eigenv[j] <= 0 ) eigenv[j] = 0 ;
@@ -387,6 +388,8 @@ double simplifiedLikelihoodLinear(){
 	   theta_components.add(*c);
 	}
 	RooAddition *theta = new RooAddition(Form("theta_%d",i+1),Form("theta in bin - %d",i),theta_components);
+	*/
+	RooRealVar  *theta = new RooRealVar(Form("theta_%d",i+1),Form("free parameter - %d",i+1),0,-8,8);
 	thetalist_.add(*theta);
     }
 
@@ -521,7 +524,8 @@ double simplifiedLikelihoodLinear(){
     RooAbsReal *nll_ = combined_pdf.createNLL(obsdata,RooFit::ExternalConstraints(RooArgList(constraint_pdf)));
     **/
 
-    RooRealVar *nll_ =(RooRealVar*) NLLDiagonal(slist_,*data, philist_,mu_);
+    //RooRealVar *nll_ =(RooRealVar*) NLLDiagonal(slist_,*data, philist_,mu_);
+    RooRealVar *nll_ =(RooRealVar*) NLL(slist_,*data, thetalist_,mu_,Tcovar);
 
     r.setVal(0.0);
     RooMinimizer m(*nll_);
