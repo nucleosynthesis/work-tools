@@ -35,6 +35,7 @@ parser.add_option("-v","--verbose",dest="verbose",default=False,action="store_tr
 parser.add_option("","--passSumEntries",dest="passSumEntries",default="",help="x:treename Get Entries in TTree treename and pass to argument x")
 parser.add_option("","--passSumWeights",dest="passSumWeights",default="",help="x:treename:branch Get Weights from branch in treename and sum them, pass to x")
 parser.add_option("","--blacklist",dest="blacklist",default=[],action="append",help="Add blacklist file types (search for this string in files and ignore them")
+parser.add_option("","--sandbox",dest="sandbox",default=[],action="append",help="List of files to copy over to tmp directory - note, will look in current dir, otherwise you can specify the full path.")
 
 # Make batch submission scripts options
 parser.add_option("-n","--njobs",dest="njobs",type='int',default=-1,help="Split into n jobs, will automatically produce submission scripts")
@@ -65,17 +66,27 @@ def write_job(exec_line, out, analyzer, i, n):
 	sub_file.write('touch %s.run\n'%os.path.abspath(sub_file.name))
 	sub_file.write('cd %s\n'%os.getcwd())
 	sub_file.write('eval `scramv1 runtime -sh`\n')
+
+
 	sub_file.write('cd -\n')
 	sub_file.write('mkdir -p scratch\n')
 	sub_file.write('cd scratch\n')
-	#sub_file.write('cp -p $CMSSW_BASE/bin/$SCRAM_ARCH/%s .\n'%analyzer)
-	sub_file.write('cp -p %s .\n'%(os.path.abspath(analyzer)))
+	sub_file.write('cp -p $CMSSW_BASE/bin/$SCRAM_ARCH/%s .\n'%analyzer)
+	#sub_file.write('cp -p %s .\n'%(os.path.abspath(analyzer)))
+	
+	for sbfile in options.sandbox: 
+	   if os.path.abspath("%s/%s"%(cwd,sbfile)): 
+	    sub_file.write('cp -p %s/%s .\n'%(cwd,sbfile))
+	   else: 
+	    sub_file.write('cp -p %s .\n'%sbfile)
+	
 	sub_file.write('mkdir -p %s\n'%(out))
 
 	sub_file.write('if ( %s ) then\n'%exec_line)
 	sub_file.write('\t hadd -f Output_job%d.root %s/*.root \n'%(i,(out)))
 	sub_file.write('\t mv Output_job*.root %s\n'%os.path.abspath(out))
 	sub_file.write('\t rm -rf ./bacon ./Output_job* \n')
+	for sbfile in options.sandbox: sub_file.write('\t rm -rf %s \n'%sbfile)
 	sub_file.write('\t touch %s.done\n'%os.path.abspath(sub_file.name))
 	sub_file.write('else\n')
 	sub_file.write('\t touch %s.fail\n'%os.path.abspath(sub_file.name))
@@ -95,7 +106,7 @@ def trawlHadd(directory):
   for di in list_of_dirs:
      for root, dirs, files in os.walk(di):
 	  list_of_files=''
-	  for file in fnmatch.filter(files,'*.root'):
+	  for file in fnmatch.filter(files,'Output*.root'):
 		  list_of_files += ' '+os.path.join(root,'%s'%file)
 	  print root, ' hadding --> ', len(list_of_files.split())
 	  os.system('mkdir -p tmp_r')
@@ -225,7 +236,7 @@ os.system('mkdir -p %s/%s'%(cwd,options.outdir))
 
 mindeces   = []
 analyzer   = args[0]
-outfile = args[1]
+outfile    = args[1]
 analyzer_args = parse_to_dict(options.args)
 
 if options.passSumEntries: 
