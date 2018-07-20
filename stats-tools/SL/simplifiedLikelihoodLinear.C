@@ -11,6 +11,7 @@ bool gMultiplicative=false;
 bool justCalcLimit = false;
 bool ignoreCorrelation = false;
 bool includeQuadratic  = false;
+bool gNoSystematic = false;
 bool verb=1;
 
 // for LH scanning
@@ -53,6 +54,28 @@ void Minimize(RooMinimizer &minim){
 double globalVariance[(int) MAXBINS] ;  
 void getCoefficiencts(double *A, double *B, double *C, int bin){
     // mean 
+    /*
+    double m1 = globalBackground[bin-1];
+    double m2 = globalVariance[bin-1];
+    double m3 = globalThirdMoments[bin-1];
+    if (8*m2*m2*m2 >= m3*m3) *C = (TMath::Sqrt(2*m2))*TMath::Cos(4*pi/3. + 1./3. * TMath::ATan(TMath::Sqrt((8*m2*m2*m2-m3*m3)/(m3*m3))) );
+    else *C = (TMath::Sqrt(2*m2))*TMath::CosH((1/3.)*TMath::ATanH(TMath::Sqrt((-8*m2*m2*m2+m3*m3)/(m3*m3)))) ;
+    if (m2 > 2*(*C)*(*C)) *B = TMath::Sqrt(m2-2*(*C)*(*C));
+    else *B = TMath::Sqrt(-m2+2*(*C)*(*C));
+    *A = m1 - 2*(*C);
+    */
+    double pi = TMath::Pi();
+    double m1 = globalBackground[bin-1];
+    double m2 = globalVariance[bin-1];
+    double m3 = globalThirdMoments[bin-1];
+
+     *C = -1*(m3/TMath::Abs(m3))*(TMath::Sqrt(2*m2))*TMath::Cos( (4./3)*pi + (1./3)*TMath::ATan( TMath::Sqrt(8.0*(m2*m2*m2)/(m3*m3)-1.0) ) ) ;
+     *B = TMath::Sqrt(m2-2*(*C)*(*C));
+     *A = m1-(*C);
+
+}
+void getCoefficienctsOld(double *A, double *B, double *C, int bin){
+    // mean 
     double m1 = globalBackground[bin-1];
     double m2 = globalVariance[bin-1];
     double m3 = globalThirdMoments[bin-1];
@@ -69,10 +92,18 @@ void getCoefficiencts(double *A, double *B, double *C, int bin){
     std::complex<double> c = -j*m2/k-0.5*j2*k;
 
     double localC = c.real();
-
-    *B = TMath::Sqrt(m2 - (localC*localC)/2);
+    
+    // What should be done in this case really? should we flip the sign?
+    // for now what I will do is to ignore the C part and return the linear component only - sqrt(m2)
     *A = m1 - localC/2;
     *C = localC;
+    if ( m2 - (localC*localC)/2 < 0 ) {
+      std::cout << " Cant calculate coeffs, resort to linear version " << bin << ", " << *A << ", " << *C << ", " <<  m1 << " " <<  m2 << " " <<  m3 <<std::endl; 
+      *B = TMath::Sqrt(m2) ;
+      *C = 0;
+    } else {
+      *B = TMath::Sqrt(m2 - (localC*localC)/2);
+    }
 }
 //ROOT::Math::MinimizerOptions::SetDefaultStrategy(2);
 //ROOT::RooMsgService::setGlobalKillBelow(RooFit::FATAL);
@@ -300,48 +331,65 @@ double simplifiedLikelihoodLinear(){
 
     // Convert TH2 -> TMatrix 
     TMatrixDSym Tcovar(nbins);
+    TMatrixDSym Tcorr(nbins);
     for (int i=0;i<nbins;i++){
 	for (int j=0;j<nbins;j++){
 	    if (ignoreCorrelation){ 
 		if (i==j){
-		    if (gMultiplicative) Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
-		    else Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
-		    }
-		else Tcovar[i][j] = 0;
-	    }
-	    else {
-		if (gMultiplicative) Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
-		else Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
+		    Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
+		    Tcorr[i][j]  = corr->GetBinContent(i+1,j+1);
+		} else {
+		  Tcorr[i][j] = 0;
+		}
+	    } else {
+		Tcovar[i][j] = covar->GetBinContent(i+1,j+1);
+		Tcorr[i][j]  = corr->GetBinContent(i+1,j+1);
+
+		// If using the SL Quadratic, we redefine the correlation matrix explicitly
+		if (includeQuadratic){
+			double m12 = covar->GetBinContent(i+1,j+1);
+			
+	  		double Ai,Bi,Ci; getCoefficiencts(&Ai,&Bi,&Ci,i+1);
+	  		double Aj,Bj,Cj; getCoefficiencts(&Aj,&Bj,&Cj,j+1);
+			Tcorr[i][j] = ( 1./(4*Ci*Cj) )*(TMath::Sqrt(Bi*Bj*Bi*Bj + 8*Ci*Cj*m12) - Bi*Bj );
+		}
 		if (verb) std::cout << " Correlation (" << i+1 << "," << j+1 << ") " << corr->GetBinContent(i+1,j+1) << std::endl;
 	    }
-	}
+	 }
     }
 
+    //return 0;
     // Now we will build up the pdf model -> in the end we will feed this into our own likelihood 
     // 1. diagonalize the covariance matrix to get the directions for the "independant" parameters 
 
     TVectorD eigenv;
-    TMatrixD eigenvectors = Tcovar.EigenVectors(eigenv);
+    TMatrixD eigenvectors = Tcorr.EigenVectors(eigenv);
     RooArgList philist_;
 
     for (int b=1;b<=nbins;b++){
 	RooRealVar *phi = new RooRealVar(Form("phi_%d",b),Form("free parameter - %d",b),0,-5,5);
+	if (gNoSystematic) phi->setConstant(true);
 	philist_.add(*phi);
     }
 
     //return 0;
-    // 2. build up the theta terms ( for b + theta ),  
+    // 2. build up the theta terms ( for b + theta ), 
     RooArgList thetalist_;
     
     for (int i=0;i<nbins;i++){
+        /*
         RooArgList theta_components;
         for (int j=0;j<nbins;j++){
+	   if ( eigenv[j] <= 0 ) eigenv[j] = 0 ;
+	   if (verb) std::cout << " Eigen-velue (lambda)  " << j << " = " << eigenv[j] << std::endl;  
 	   double sqrtLambda = TMath::Sqrt(eigenv[j]);
 	   double E 	     = eigenvectors[i][j];  
 	   RooFormulaVar *c = new RooFormulaVar(Form("c_%d_%d",i+1,j+1),Form("%g*%g*@0",sqrtLambda,E),RooArgList(*(philist_.at(j))));
 	   theta_components.add(*c);
 	}
 	RooAddition *theta = new RooAddition(Form("theta_%d",i+1),Form("theta in bin - %d",i),theta_components);
+	*/
+	RooRealVar  *theta = new RooRealVar(Form("theta_%d",i+1),Form("free parameter - %d",i+1),0,-8,8);
 	thetalist_.add(*theta);
     }
 
@@ -371,6 +419,9 @@ double simplifiedLikelihoodLinear(){
 	if (verb) std::cout << " Observed at " << b << ", " << observation.getVal() << std::endl;
     }
 
+    TH1F *h_pre_fit = (TH1F*)bkg->Clone(); h_pre_fit->SetLineColor(1); h_pre_fit->SetLineStyle(3); 
+    h_pre_fit->SetName("simple_prefit");
+
     // make a constraint term for the background, and a RooRealVar for bkg 
     for (int b=1;b<=nbins;b++){
 	double bkgy = (double)bkg->GetBinContent(b);
@@ -383,7 +434,7 @@ double simplifiedLikelihoodLinear(){
 
 	RooRealVar *mean_ ;	
 
-	mean_ = new RooRealVar(Form("phi_bin_%d_In",b),Form("expected bin %d",b),0); 
+	mean_ = new RooRealVar(Form("phi_bin_%d_In",b),Form("phi bin %d",b),0); 
 	mean_->setConstant(true);
 	//if (gMultiplicative) mean_->setError(1.);
 	//else mean_->setError(1.);
@@ -408,12 +459,16 @@ double simplifiedLikelihoodLinear(){
 	else if (includeQuadratic)  {
 	  double A,B,C;
 	  getCoefficiencts(&A,&B,&C,b);
-	  x_ = new RooFormulaVar(Form("exp_bin_%d",b),Form("%g+@0*%g*@0*@0*%g",A,B,C/2),RooArgList(*theta_));
+	  if (verb) {
+	    std::cout << " Coefficients " << "A = " << A << ", B =  " << B << ", C = " << C <<std::endl;
+	}
+	  x_ = new RooFormulaVar(Form("exp_bin_%d",b),Form("%g+@0*%g+@0*@0*%g",A,B,C),RooArgList(*theta_));
 	} else {
-	  x_ = new RooFormulaVar(Form("exp_bin_%d",b),Form("%g+@0",bkgy),RooArgList(*theta_));
+	  x_ = new RooFormulaVar(Form("exp_bin_%d",b),Form("%g+@0*%g",bkgy,kappa),RooArgList(*theta_));
         }
 
 	if (verb) std::cout << " Pre-fit Exp background At " << b << ", " << x_->getVal() << std::endl;
+	h_pre_fit->SetBinContent(b,x_->getVal());
 	xlist_.add(*x_);
 	//thetalist_.add(*theta_);
 	
@@ -441,6 +496,8 @@ double simplifiedLikelihoodLinear(){
 
     sampleType.setIndex(1); 
     RooSimultaneous combined_pdf("combined_pdf","combined_pdf",sampleType);
+    
+
     for (int b=1;b<=nbins;b++){
 	RooAddition *sum = new RooAddition(Form("splusb_bin_%d",b),Form("Signal plus background in bin %d",b),RooArgList(*((RooRealVar*)(signals_.at(b-1))),*((RooRealVar*)(xlist_.at(b-1)))));
 	RooPoisson  *pois = new RooPoisson(Form("pdf_bin_%d",b),Form("Poisson in bin %d",b),observation,(*sum)); 
@@ -450,8 +507,25 @@ double simplifiedLikelihoodLinear(){
     }
     // Make a prodpdf instread
     //RooProdPdf combinedpdfprod("maybefinalpdf","finalpdf",RooArgList(combined_pdf,constraint_pdf));
-    //RooAbsReal *nll_ = combined_pdf.createNLL(obsdata,RooFit::ExternalConstraints(RooArgList(constraint_pdf)));
-    RooRealVar *nll_ =(RooRealVar*) NLLDiagonal(slist_,*data, philist_,mu_);
+    
+    /* Uncomment for RooFit stylee */
+    /*
+    TMatrixDSym TDiag(nbins);
+    for (int i=0;i<nbins;i++){
+	for (int j=0;j<nbins;j++){
+		if (i==j){
+		    TDiag[i][j] = 1;
+		} else {
+		    TDiag[i][j] = 0;
+		}
+	 }
+    }
+    RooMultiVarGaussian constraint_pdf("constraint_pdf","Constraint for background pdf",philist_,mu_,TDiag);
+    RooAbsReal *nll_ = combined_pdf.createNLL(obsdata,RooFit::ExternalConstraints(RooArgList(constraint_pdf)));
+    **/
+
+    //RooRealVar *nll_ =(RooRealVar*) NLLDiagonal(slist_,*data, philist_,mu_);
+    RooRealVar *nll_ =(RooRealVar*) NLL(slist_,*data, thetalist_,mu_,Tcovar);
 
     r.setVal(0.0);
     RooMinimizer m(*nll_);
@@ -500,6 +574,7 @@ double simplifiedLikelihoodLinear(){
     signal->SetFillColor(kPink+5);
     data->Draw("PEL");
     h_post_fit->Draw("histsame");
+    h_pre_fit->Draw("histsame");
     signal->Draw("histsame");
 
     TH1F *total_h = (TH1F*)h_post_fit->Clone(); total_h->SetName("totalsum");
@@ -510,9 +585,10 @@ double simplifiedLikelihoodLinear(){
     data->Draw("PELsame");
     TLegend *leg = new TLegend(0.6,0.6,0.89,.89);
     leg->AddEntry(&*data,"data","PEL");
-    leg->AddEntry(h_post_fit,"postfit background simplified LH","L");
-    leg->AddEntry(total_h,Form("postfit background+signal (#mu=%g) ",rMin),"L");
-    leg->AddEntry(signal,"prefit signal (#mu=1)","L");
+    leg->AddEntry(h_pre_fit,"pre-fit background simplified LH","L");
+    leg->AddEntry(h_post_fit,"post-fit background simplified LH","L");
+    leg->AddEntry(total_h,Form("post-fit background+signal (#mu=%g) ",rMin),"L");
+    leg->AddEntry(signal,"pre-fit signal (#mu=1)","L");
     leg->Draw();
     can->SetLogy();
 
@@ -589,7 +665,7 @@ double simplifiedLikelihoodLinear(){
 	    r.setVal(rv);
 	    r_=rv;
 	    Minimize(*minimC); //->minimize("Minuit","minimize");
-	    deltaNLL_  = nll_->getVal() - nllMin;
+	    deltaNLL_  = (nll_->getVal() - nllMin);
 	    //nuisanceLL = -1*constraint_pdf.getLogVal();
 	    if (verb) std::cout << "r="<< rv <<", Dnll="<<deltaNLL_ << std::endl;
 
@@ -651,6 +727,7 @@ double simplifiedLikelihoodLinear(){
 	tree->Write();
 
 	fout->WriteTObject(covar,"covar");
+	fout->WriteTObject(corr,"correlation");
 	fout->WriteTObject(data,"data");
 	fout->WriteTObject(dataG,"dataG");
 	fout->WriteTObject(bkg,"bkg");

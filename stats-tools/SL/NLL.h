@@ -37,7 +37,7 @@ RooRealVar *NLL(RooArgList &sums, TH1F &data, RooArgList &theta, RooArgList &mea
 	    RooFormulaVar *Vx = new RooFormulaVar(Form("V_%d_%d_th_%d_%s",i+1,j+1,j+1,data.GetName()),Form("%g*@0",Vinv[i][j]),RooArgList(*(dtheta.at(j))));
 	    columns.add(*Vx);
 	  }
-	  std::cout << std::endl;
+	  //std::cout << std::endl;
 	  RooAddition *add = new RooAddition(Form("add_%d_%s",i+1,data.GetName()),"",columns);
 	  RooFormulaVar *row = new RooFormulaVar(Form("row_%d_%s",i+1,data.GetName()),"0.5*@0*@1",RooArgList(*(dtheta.at(i)),*add));
 	  constraint.add(*row);

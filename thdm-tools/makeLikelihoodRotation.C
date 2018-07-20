@@ -5,10 +5,10 @@ int doXCHECK=1;
 double gamma(double kV, double ku, double kd){
   
    
-   double kglu2 = 1.06*ku*ku + 0.01*kd*kd - 0.07*ku*kd;
-   double kgam2 = 1.59*kV*kV + 0.07*ku*ku - 0.66*kV*ku;
+   double kglu2 = 1.04*ku*ku + 0.002*kd*kd - 0.038*ku*kd;
+   double kgam2 = 1.59*kV*kV + 0.07*ku*ku - 0.67*kV*ku;
    double kZg2 = kgam2;
-   double g = 0.57*kd*kd + 0.22*kV*kV + 0.09*kglu2 +0.06*kd*kd +0.03*kV*kV +0.03*ku*ku +0.0023*kgam2 +0.0016*kZg2 + 0.0001*kd*kd+0.00022*kd*kd;
+   double g = 0.58*kd*kd + 0.22*kV*kV + 0.08*kglu2 +0.06*kd*kd +0.026*kV*kV +0.029*ku*ku +0.0023*kgam2 +0.0015*kZg2 + 0.00025*kd*kd+0.00022*kd*kd;
    return TMath::Sqrt(g);
 }
 
