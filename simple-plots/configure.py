@@ -3,10 +3,18 @@
 import ROOT 
 import math 
 
-treeName    = "events"
+# These will get set by the plotting script to highlight what is being currently processed
+fName   = ""
+fSample = ""
+fLabel  = ""
+###########################################################################################
 
+
+
+treeName    = "events"
 L           = 10 # = 100/fb
-signalScale = 200
+signalScale = 200  # histograms (not sum of weights) will be scaled
+
 
 samples = { 
 	"VV":[ ["vv.root"], [98.5356], ROOT.kGreen+1 ]
@@ -36,6 +44,7 @@ variables = {
 	  }
 
 # here define a simple analysis (selection of cuts or whatever)
+# needs to return a weight, if < 0, wont be counted in sum of weights at summary 
 
 def doAnalysis(tr,entry,i,w):
      
@@ -70,3 +79,4 @@ def doAnalysis(tr,entry,i,w):
      variables["drjj"][entry][i].Fill(dR,w)
      variables["ptjj"][entry][i].Fill(jj.Pt(),w)
 
+     return w
