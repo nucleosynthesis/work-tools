@@ -343,7 +343,7 @@ for job_i in range(njobs):
     exec_line_i = exec_line
     for i,m in enumerate(fil[0]):  # no defaults so guarantee (make the check) that all of the args are there)  
 		exec_line_i = exec_line_i.replace(" MULTARG_%d "%i," "+str(m)+" " ) #LIST  OVER iterated arguments and produce and replace MULTIARG_i with arguemnt at i in list ?
-   job_exec+=exec_line_i+'; mv %s %s/%s_job%d_file%d.root; '%(outfile,options.outdir,outfile,job_i,fil_i) 
+   job_exec+=exec_line_i+'; mv -v %s %s/%s_job%d_file%d.root; '%(outfile,options.outdir,outfile.strip("*?,"),job_i,fil_i) 
    nfiles_i += 1
  if options.verbose: print "VERB -- job exec line --> ",job_exec
 
