@@ -28,9 +28,12 @@ default_args = []
 # Options
 parser = OptionParser()
 parser = OptionParser(usage="usage: %prog analyzer outputfile [options] \nrun with --help to get list of options")
-parser.add_option("-d","--directory",default='',help="Pick up files from a particular directory. can also pass from /eos/. Will initiate split by files (note you must also pass which index the file goes to)")
+parser.add_option("-d","--directory",default='',help="Pick up files from a particular directory. can also pass from /eos/. Will initiate split by files (note you must also pass which index the file goes to, eg if its the first argument, use -d 0:directory_name)")
 parser.add_option("-o","--outdir",default='bacon',help="output for analyzer. This will always be the output for job scripts.")
-parser.add_option("-a","--args",dest="args",default=[],action="append",help="Pass executable args n:arg OR named arguments name:arg. Multiple args can be passed with <val1,val2...> or lists of integers with [min,max,stepsize]")
+parser.add_option("-a","--args",dest="args",default=[],action="append",help='Pass executable args n:arg OR named arguments --name:arg (or -x:arg). Multiple args can be passed with <val1,val2...> or lists of integers with [min,max,stepsize]\n For example ... \
+1. -a "0:<cat,dog>" -a "1:<3,4>" will produce the following runs "analyzer cat 3, analyzer cat 4, analyzer dog 3, analyzer dog 4. \n \
+2. -a "--my_option:[1,3,1]" will produce runs "analyzer --my_option 1, analyzer --my_option 2". \n \
+The two types can be mixed and the tool will always figure out all combinations of the ranges/lists given. You can also simply pass through options directly to the analyzer program with -a "--option_name=value" ')
 parser.add_option("-v","--verbose",dest="verbose",default=False,action="store_true",help="Spit out more info")
 parser.add_option("","--passSumEntries",dest="passSumEntries",default="",help="x:treename Get Entries in TTree treename and pass to argument x")
 parser.add_option("","--passSumWeights",dest="passSumWeights",default="",help="x:treename:branch Get Weights from branch in treename and sum them, pass to x")
@@ -285,7 +288,7 @@ if options.passSumWeights:
           print "WARNING - NO TREE %s for sumWeights :( "%(treenam)
 	  continue
     sumWeights = tmpH.Integral()
-  else: sys.exit("Lazy!, passSumWeights only with directoy option")
+  else: sys.exit("Lazy!, --passSumWeights only with directory option")
   if options.verbose : print "VERB -- Sum weights for jobs = %d, being passed to argument %s"%(sumWeights,pos)
   analyzer_args[int(pos)]=['',[float(sumWeights)]]
 
@@ -293,8 +296,12 @@ exec_line = '%s'%analyzer
 
 if options.directory :
   filepos,options.directory = options.directory.split(':')
-  analyzer_args[int(filepos)]=['',"fileinput"]
+  #analyzer_args[int(filepos)]=['',"KEYWORD_BACONFILEINPUT"]
 
+  if not "-" in filepos: analyzer_args[int(filepos)]=['',"KEYWORD_BACONFILEINPUT"]
+  else: analyzer_args[0] = ['',"%s KEYWORD_BACONFILEINPUT"%filepos]
+
+print analyzer_args
 
 # NEED TO ITERATE OF MAP OF ARGS, FORGET DEFAULT ARGGS I THINK, forec them set!!!!!
 #for arg_i,arg in enumerate(default_args):
@@ -304,8 +311,8 @@ if len(sortedkeys): sortedkeys.sort()
 for key in sortedkeys:
 #  if arg_i in analyzer_args.keys(): 
   	arg = analyzer_args[key][1]
-	if arg=='fileinput':
-		exec_line+= ' fileinput '
+	if 'KEYWORD_BACONFILEINPUT' in arg:
+		exec_line+= " %s "%arg
 	elif    len(arg)>1: 
 		mindeces.append(key)
 		exec_line+= ' MULTARG_%d '%key
@@ -338,11 +345,11 @@ for job_i in range(njobs):
  for fil_i,fil in enumerate(files):
    #if options.directory : 
    if not fil[1]: continue
-   if options.directory: exec_line_i = exec_line.replace('fileinput'," "+fil[0]+" ")
+   if options.directory: exec_line_i = exec_line.replace('KEYWORD_BACONFILEINPUT'," "+fil[0]+" ")
    else: 
     exec_line_i = exec_line
     for i,m in enumerate(fil[0]):  # no defaults so guarantee (make the check) that all of the args are there)  
-		exec_line_i = exec_line_i.replace(" MULTARG_%d "%i," "+str(m)+" " ) #LIST  OVER iterated arguments and produce and replace MULTIARG_i with arguemnt at i in list ?
+        exec_line_i = exec_line_i.replace(" MULTARG_%d "%i," "+str(m)+" " ) #LIST  OVER iterated arguments and produce and replace MULTIARG_i with arguemnt at i in list ?
    job_exec+=exec_line_i+'; mv -v %s %s/%s_job%d_file%d.root; '%(outfile,options.outdir,outfile.strip("*?,"),job_i,fil_i) 
    nfiles_i += 1
  if options.verbose: print "VERB -- job exec line --> ",job_exec
