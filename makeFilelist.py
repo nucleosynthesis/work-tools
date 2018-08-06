@@ -5,7 +5,7 @@ siteHandling = {
    ###                  "prepend" :  "root://eoscms//eos/cms",
    ###                  "field"   : 4
    ###                  },
-   "cern.ch"    : { "ls"      :  "/afs/cern.ch/project/eos/installation/cms/bin/eos.select ls %s",
+   "cern.ch"    : { "ls"      :  "/afs/cern.ch/project/eos/installation/scripts/bin/eos.select ls %s",
                     "prepend" :  "root://eoscms//eos/cms",
                     "prepend_dir" :  True,
                     "field"   : 0
@@ -62,7 +62,8 @@ def makeCaFiles(dir,blist,njobs=-1,jobid=0,nf=[0],maxfiles=-1,site="cern.ch"):
             tmp.append( toks[field] )
       files = tmp
    files.sort()
-      
+   
+   print sc 
    if not sc:
       ifile = 0
       for f in files:
