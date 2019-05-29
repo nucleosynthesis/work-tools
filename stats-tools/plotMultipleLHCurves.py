@@ -29,6 +29,7 @@ parser.add_option("-v","--verb",action="store_true",help="Put Results in Legend"
 parser.add_option("-V","--VERB",action="store_true",help="spitoutlikelihood")
 parser.add_option("-x","--xvar",default="r",type='str',help="x variable in tree")
 parser.add_option("-y","--yvar",default="",type='str',help="y variable, if left blank, will be 2*deltaNLL")
+parser.add_option("","--yvarstring",default="",type='str',help="y variable as string (eg x+y), if left black, will be 2*deltaNLL")
 parser.add_option("-o","--outnames",default="",type='str')
 parser.add_option("-m","--makeplot",default=False,action='store_true',help="makes a root file with a graph of the best fit and errors per file")
 parser.add_option("-L","--legend",default=False,action='store_true',help="make a legend with file names")
@@ -40,6 +41,7 @@ parser.add_option("","--reMinimize",default=False,action='store_true')
 parser.add_option("","--xl",default="",type='str')
 parser.add_option("","--xr",default="",type='str')
 parser.add_option("","--yr",default="",type='str')
+parser.add_option("","--Ryr",default="",type='str',help="Right y-axis range")
 parser.add_option("","--ylabel",default="-2#Delta Log(L)",type='str')
 #parser.add_option("","--cl",default="1",type='float')
 parser.add_option("","--cl",type='string',action='callback',callback=clevels_callback,help="Add another crossing")
@@ -105,6 +107,9 @@ def makespline(tr): # r,2nll
     res.append([xx,2*spl.getVal()])
   return res
 
+RYRANGE=[]
+if options.Ryr:
+  RYRANGE=(options.Ryr).split(":")
 
 def applyRanges(GR):
   if options.xr:
@@ -113,6 +118,7 @@ def applyRanges(GR):
   if options.yr:
 	YRANGE=(options.yr).split(":")
 	GR.GetYaxis().SetRangeUser(float(YRANGE[0]),float(YRANGE[1]))
+	#GR.GetYaxis().SetRangeUser(float(YRANGE[0]),float(YRANGE[1]))
   if options.xl:
 	GR.GetXaxis().SetTitle(options.xl)
 
@@ -184,7 +190,7 @@ def findQuantile(pts,cl):
 
 	return min,max
 
-MAXNLL = 35	
+MAXNLL = 1000000	
 MAXDER = 1.0
 OFFSET=options.coloroffset
 
@@ -205,8 +211,8 @@ print "Labels", options.labels
 
 grs = []
 centres = []
-lows	= []
-highs	= []
+Alows	= []
+Ahighs	= []
 names	= []
 lowers =  []
 uppers =  []
@@ -237,10 +243,21 @@ for p,fn in enumerate(files):
    
    tree = f.Get("limit")
    gr = ROOT.TGraph()
+   for SS in SANDYLINES: 
+    if "*" in SS:
+      branches =tree.GetListOfBranches()
+      for BR in range(branches.GetSize()): 
+        if SS.strip("*") in branches.At(BR).GetName(): SANDYLINES.append(branches.At(BR).GetName())
+        
+   # now remove the * ones 
+   SANDYLINES = filter(lambda x: "*" not in x, SANDYLINES)
+
    grEXTl = [ROOT.TGraph() for SS in SANDYLINES]
    c=0
    res = []
 
+   lows	   = []
+   highs   = []
 
    for i in range(tree.GetEntries()):
      tree.GetEntry(i)
@@ -258,14 +275,19 @@ for p,fn in enumerate(files):
          if abs( getattr(tree,cuts[0]) - float(cuts[1])) > 0.001: 
 	   skipPoint=True
      if skipPoint: continue
-     if options.yvar: dnll = getattr(tree,options.yvar)
+     if options.yvarstring: 
+       tree.Draw("%s>>h%d"%(options.yvarstring,i),"Entry$==%d"%i)
+       h = ROOT.gROOT.FindObject("h%d"%i)
+       dnll = h.GetMean()
+     elif options.yvar: dnll = getattr(tree,options.yvar)
      else:
        dnll = 2*tree.deltaNLL
        if dnll==0 and options.absNLL: continue
-     if options.yr: 
-       if dnll < float(options.yr.split(":")[0])or dnll > float(options.yr.split(":")[1]) : continue
+     #if options.yr: 
+     #  if dnll < float(options.yr.split(":")[0])or dnll > float(options.yr.split(":")[1]) : continue
      #if abs(tree.quantileExpected)==1: continue
-     elif abs(dnll)<0.0001 and dnll > 0: 
+     #elif abs(dnll)<0.0001 and dnll > 0: 
+     if 0<1:
      	center = xv
 	cenDNLL = dnll
      if options.absNLL: res.append([xv,2*tree.absNLL])
@@ -446,6 +468,9 @@ for p,fn in enumerate(files):
  outTree.Fill()
 
  grEXT.append(grEXTl)
+ #Acentres.append(centres)
+ Alows.append(lows)
+ Ahighs.append(highs)
 
 # Now set the graphs relative to some point if requested 
 if options.relative!="": 
@@ -643,6 +668,9 @@ if len(SANDYLINES)>0:
 		grEXT[j][jj].GetXaxis().SetLabelSize(0) 
 		grEXT[j][jj].GetYaxis().SetTitle("Param Value") 
 		grEXT[j][jj].GetYaxis().SetTitleOffset(2.0) 
+		if options.Ryr:
+		  print RYRANGE
+		  grEXT[j][jj].GetYaxis().SetRangeUser(float(RYRANGE[0]),float(RYRANGE[1]))
 	else: grEXT[j][jj].Draw("pY+") 
 
 pad1.cd()

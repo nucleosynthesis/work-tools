@@ -46,8 +46,9 @@ parser.add_option("-q","--queue",default='1nh',help="submission queue")
 
 parser.add_option("--dryRun",default=False,action="store_true",help="Do nothing, just print what will happen")
 
+monitor_options = ['sub','check','resub','hadd']
 # Monitor options (submit,check,resubmit failed)  -- just pass outodir as usual but this time pass --monitor sub --monitor check or --monitor resub
-parser.add_option("--monitor",default='',help="Monitor mode (sub/resub/check directory of jobs)")
+parser.add_option("--monitor",default='',help="Monitor mode (%s) pass directory of jobs"%"/".join(monitor_options))
 
 cwd = os.getcwd()
 (options,args) = parser.parse_args()
@@ -57,6 +58,7 @@ njobs = options.njobs if options.njobs>0 else 1
 if options.passSumWeights and options.passSumEntries : sys.exit('Error -- must specify only one of passSumEntries or passSumWeights' )
 
 r.gROOT.SetBatch(1)
+
 
 def write_job(exec_line, out, analyzer, i, n):
 
@@ -113,7 +115,7 @@ def trawlHadd(directory):
 		  list_of_files += ' '+os.path.join(root,'%s'%file)
 	  print root, ' hadding --> ', len(list_of_files.split())
 	  os.system('mkdir -p tmp_r')
-	  print list_of_files
+	  #print list_of_files
 	  for fi in list_of_files.split():
 	    os.system('cp %s tmp_r/tmp_%s'%(fi,fi.split('/')[-1]))
 	  outname = di.replace('/','_')
@@ -131,7 +133,7 @@ def submit_jobs(lofjobs):
     os.system('bsub -q %s -o %s.log %s'%(options.queue,os.path.abspath(sub_file),os.path.abspath(sub_file)))
   
 if options.monitor: 
-  if options.monitor not in ['sub','check','resub','hadd']: sys.exit('Error -- Unknown monitor mode %s'%options.monitor)
+  if options.monitor not in monitor_options: sys.exit('Error -- Unknown monitor mode %s'%options.monitor)
   dir = options.outdir
 
   if options.monitor == 'sub' or options.monitor == 'resub': 
@@ -248,6 +250,7 @@ if options.passSumEntries:
   if options.directory : 
     files = getFilesJob(options.directory.split(":")[1],0,-1)
     for fi in files: 
+      if options.verbose : print "VERB -- Accessing file %s, and checking for tree %s"%(fi[0],treenam)
       tf = r.TFile.Open(fi[0])
       try :
       	tf.IsOpen() 
@@ -271,7 +274,8 @@ if options.passSumWeights:
   if options.directory : 
     files = getFilesJob(options.directory.split(":")[1],0,-1)
     tmpH = r.TH1F("htmp","htmp",1,0,1)
-    for i,fi in enumerate(files): 
+    for i,fi in enumerate(files):
+      if options.verbose : print "VERB -- Accessing file %s, and checking for tree %s"%(fi[0],treenam)
       tf = r.TFile.Open(fi[0])
       try :
       	tf.IsOpen() 
@@ -301,7 +305,7 @@ if options.directory :
   if not "-" in filepos: analyzer_args[int(filepos)]=['',"KEYWORD_BACONFILEINPUT"]
   else: analyzer_args[0] = ['',"%s KEYWORD_BACONFILEINPUT"%filepos]
 
-print analyzer_args
+#print analyzer_args
 
 # NEED TO ITERATE OF MAP OF ARGS, FORGET DEFAULT ARGGS I THINK, forec them set!!!!!
 #for arg_i,arg in enumerate(default_args):

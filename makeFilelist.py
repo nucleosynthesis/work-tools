@@ -57,13 +57,13 @@ def makeCaFiles(dir,blist,njobs=-1,jobid=0,nf=[0],maxfiles=-1,site="cern.ch"):
       tmp = []
       for f in files:
          toks = [ t for t in f.split(" ") if t != "" ]
-         print toks
+         #print toks
          if len(toks) > field:
             tmp.append( toks[field] )
       files = tmp
    files.sort()
    
-   print sc 
+   #print sc 
    if not sc:
       ifile = 0
       for f in files:
@@ -182,5 +182,5 @@ if __name__ == "__main__":
    if len(argv) == 3:
       site = argv.pop(1)
    flist = makeCaFiles(argv[1],site=site)
-   for f in flist:
-      print f[0]
+   #for f in flist:
+      #print f[0]

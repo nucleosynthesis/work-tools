@@ -23,9 +23,10 @@ parser.add_option("","--yl",default="",type='str')
 parser.add_option("","--xr",default="-2,2",type='str')
 parser.add_option("","--yr",default="-2,2",type='str')
 parser.add_option("","--zr",default="0,10",type='str')
-parser.add_option("","--cl",default="1",type='float',help="does nothing for now!")
+parser.add_option("","--cl",type='float',help="does nothing for now!")
 parser.add_option("","--coloroffset",default=1,type='int')
 parser.add_option("","--labels",default="",type='str')
+parser.add_option("","--bf",default=False,action='store_true',help="add best fit markers")
 (options,args)=parser.parse_args()
 
 
@@ -118,10 +119,12 @@ def scanLH2D(limit, x, y, xbf, g):
 
    rF = getattr(limit,x)
    rV = getattr(limit,y)
-   rV = ROOT.TMath.Exp(rV)
+   #rV = ROOT.TMath.Exp(rV)
    quant = limit.quantileExpected
-   deltaNLL = limit.deltaNLL
+   deltaNLL = getattr(limit,"deltaNLL")
+   if deltaNLL*0 !=0 : continue;
    if 2*deltaNLL > float(options.zr[1]): deltaNLL=0.5*float(options.zr[1])+1
+   if 2*deltaNLL < float(options.zr[0]): deltaNLL=max(0,0.5*float(options.zr[0])-1)
    if options.verbose: print "Add point %d, x=%.3g, y=%.3g, z=%.3g"%(i,rF,rV,deltaNLL)
    #print rV, rF, deltaNLL, quant
    if (abs(quant-1)<0.001) :
@@ -240,29 +243,40 @@ for j,h in enumerate(allh):
  if options.contz and j==0 :
  	hc = h.Clone()
  	hc.Draw("sameCOLZ");
- h95 = h.Clone()
- h95.SetContour(2)
- h95.SetLineStyle(2)
- h95.SetContourLevel(1,6.18); #95 %
- h95.Draw("CONT3same");
- h95.SetName(h.GetName()+"_95")
- addHs.append(h95)
+ if options.cl:
+   hCL = h.Clone()
+   hCL.SetContour(2)
+   hCL.SetLineStyle(1)
+   conflevel = ROOT.TMath.ChisquareQuantile(options.cl,2)
 
- h68 = h.Clone()
- h68.SetLineWidth(3)
- h68.SetContour(2)
- h68.SetContourLevel(1,2.3); #68 %
- h68.Draw("CONT3same");
+   hCL.SetContourLevel(1,conflevel);
+   hCL.Draw("CONT3same");
+   hCL.SetName(h.GetName()+"_CL")
+   addHs.append(hCL)
+ else: 
+   h95 = h.Clone()
+   h95.SetContour(2)
+   h95.SetLineStyle(2)
+   h95.SetContourLevel(1,5.99); #95 %
+   h95.Draw("CONT3same");
+   h95.SetName(h.GetName()+"_95")
+   addHs.append(h95)
+
+   h68 = h.Clone()
+   h68.SetLineWidth(3)
+   h68.SetContour(2)
+   h68.SetContourLevel(1,2.28); #68 %
+   h68.Draw("CONT3same");
+   h68.SetName(h.GetName()+"_68")
+   addHs.append(h68)
+ lat.SetTextColor(COLOR)
  allg[j].SetMarkerSize(1.2)
  allg[j].SetMarkerColor(COLOR)
  allg[j].SetMarkerStyle(34)
- allg[j].Draw("P")
- h68.SetName(h.GetName()+"_68")
- addHs.append(h68)
- lat.SetTextColor(COLOR)
+ if options.bf : allg[j].Draw("P")
  #lat.DrawLatex(0.16,0.86-0.05*j,"(%.2f,%.2f)"%(BFs[j][0],BFs[j][1]))
 
-#leg.Draw()
+if options.legend: leg.Draw()
 
 c.RedrawAxis()
 
