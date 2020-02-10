@@ -7,6 +7,7 @@
 import numpy
 import sys
 import array
+import re
 SANDYLINES = []
 def sandy_callback(option, opt_str,value,parser):
 	print "add ", value
@@ -59,6 +60,7 @@ parser.add_option("","--lumilab",type='string',default="")
 parser.add_option("","--entrylabel",type='string',default="")
 parser.add_option("","--obsexpected",action='store_true',default=False)
 parser.add_option("","--supp",action='store_true',default=False)
+parser.add_option("","--sum",type='str',default="",help="Sum LH scans from  multiple files - eg 0,1,2 means sum 1 and 2 into 0")
 (options,args)=parser.parse_args()
 if options.entrylabel: options.entrylabel = [float(e) for e in options.entrylabel.split(",")]
 
@@ -139,6 +141,7 @@ def makePlot(c,l,h):
   grC.SetLineWidth(2)
   grC.SetTitle("")
   cc = ROOT.TCanvas("cc","",800,760)
+  cc.SetTopMargin(0.25)
   grC.SetName("centre")
   grE.SetName("errors")
   fout.cd()
@@ -243,15 +246,33 @@ for p,fn in enumerate(files):
    
    tree = f.Get("limit")
    gr = ROOT.TGraph()
+
+   """
    for SS in SANDYLINES: 
     if "*" in SS:
       branches =tree.GetListOfBranches()
       for BR in range(branches.GetSize()): 
-        if SS.strip("*") in branches.At(BR).GetName(): SANDYLINES.append(branches.At(BR).GetName())
+        if SS.strip("*") in branches.At(BR).GetName(): 
+	        print "Will also plot branch ",branches.At(BR).GetName()
+		SANDYLINES.append(branches.At(BR).GetName())
         
    # now remove the * ones 
    SANDYLINES = filter(lambda x: "*" not in x, SANDYLINES)
+   """
+   ADDEDLINES=[]
+   for SS in SANDYLINES:
+    branches =tree.GetListOfBranches()
+    for BR in range(branches.GetSize()):
+       if SS=="*":
+	  print "Will also plot branch ",branches.At(BR).GetName()
+          ADDEDLINES.append(branches.At(BR).GetName())
+       elif re.search(SS,branches.At(BR).GetName()):
+	  print "Will also plot branch ",branches.At(BR).GetName()
+          ADDEDLINES.append(branches.At(BR).GetName())
 
+   SANDYLINES=ADDEDLINES[:]
+   if "t_cpu" in SANDYLINES: SANDYLINES.remove("t_cpu")
+   if "quantileExpected" in SANDYLINES: SANDYLINES.remove("quantileExpected")
    grEXTl = [ROOT.TGraph() for SS in SANDYLINES]
    c=0
    res = []
@@ -283,8 +304,8 @@ for p,fn in enumerate(files):
      else:
        dnll = 2*tree.deltaNLL
        if dnll==0 and options.absNLL: continue
-     #if options.yr: 
-     #  if dnll < float(options.yr.split(":")[0])or dnll > float(options.yr.split(":")[1]) : continue
+     if options.yr: 
+       if dnll < float(options.yr.split(":")[0])or dnll > float(options.yr.split(":")[1]) : continue
      #if abs(tree.quantileExpected)==1: continue
      #elif abs(dnll)<0.0001 and dnll > 0: 
      if 0<1:
@@ -485,11 +506,13 @@ if options.makeplot:
 c = ROOT.TCanvas("c","c",600,600)
 if options.result: 
   	c.SetLeftMargin(0.13)
-  	c.SetBottomMargin(0.13)
+	c.SetBottomMargin(0.13)
+  	c.SetTopMargin(0.25)
 	c.SetTicky()
         c.SetTickx()
 c.SetGridx()
 c.SetGridy()
+c.SetTopMargin(0.25)
 
 
 grs[0].GetXaxis().SetTitle("%s"%options.xvar)
@@ -504,6 +527,8 @@ if options.result:
 
 leg = 0
 
+MAXIMUMXWIDTH=0.99
+if len(SANDYLINES)>0: MAXIMUMXWIDTH=0.99
 if options.result:
 	LHeight = (0.87-0.75)/2
 	LHeight*=len(filter(lambda x: len(x)>0,names))
@@ -512,16 +537,19 @@ if options.result:
 
 
 else:
- if options.verb: leg = ROOT.TLegend(0.05,0.72,0.99,0.98)
+ if options.verb: leg = ROOT.TLegend(0.01,0.78,MAXIMUMXWIDTH,0.96)
  else: 
- 	leg = ROOT.TLegend(0.12,0.62,0.5,0.88)
+ 	leg = ROOT.TLegend(0.01,0.78,MAXIMUMXWIDTH,0.96)
 	leg.SetBorderSize(0)
 hEXP = ROOT.TH1F("h","h",1,0,1)  ; hEXP.SetLineWidth(2); hEXP.SetLineColor(1); hEXP.SetLineStyle(2)
 hOBS = ROOT.TH1F("hO","h",1,0,1) ; hOBS.SetLineWidth(2); hOBS.SetLineColor(1)
 leg.SetTextFont(42)
-leg.SetTextSize(0.03)
+#leg.SetTextSize(0.020)
 leg.SetFillColor(ROOT.kWhite)
-#leg.SetBorderSize(0)
+leg.SetBorderSize(0)
+ncolumns = 1+int((len(SANDYLINES)+len(grs))/10)  
+print "Legend will have %g columns, there are %g graphs "%(ncolumns,len(SANDYLINES)+len(grs))
+leg.SetNColumns(min(4,ncolumns))
 if options.obsexpected: 
     leg.AddEntry(hOBS,"Observed","L")
     leg.AddEntry(hEXP,"Expected","L")
@@ -539,6 +567,50 @@ if len(SANDYLINES)>0: pad.SetRightMargin(0.2)
 pad.SetCanvas(c)
 pad.Draw()
 pad.cd()
+pad.SetTopMargin(0.25)
+ALLWHITEGR = ROOT.TGraph()
+ALLWHITEGR.SetMarkerColor(0)
+ALLWHITEGR.SetLineColor(0)
+
+def graphSum(g1,g2):
+  for p in range(g1.GetN()):
+    x = g1.GetX()[p]
+    y = g1.GetY()[p]
+    y2 = g2.Eval(x)
+    g1.SetPoint(p,x,y+y2)
+ 
+# now we can sum things up if requested 
+ints = [x for x in range(len(grs))]
+if len(options.sum)>0:
+
+  NumberOfRemainers=0
+  sum_parts = options.sum.split(":")
+  starters = [int(x.split(",")[0]) for x in sum_parts]
+  summed   = [] 
+  for sp in sum_parts: 
+    bits = sp.split(",")[1:]
+    for bit in bits : summed.append(int(bit))
+  newgrs = []
+  intsToSum = []
+  for K  in ints: 
+   if K in starters:
+    newgrs.append(grs[K].Clone())
+    intsToSum.append(NumberOfRemainers)
+    NumberOfRemainers+=1
+   elif K in summed: continue
+   else: 
+    newgrs.append(grs[K].Clone())
+    NumberOfRemainers+=1
+
+  print " Graphs to sum into are " , intsToSum
+  for K,sp in enumerate(sum_parts):
+    this_sum = sp.split(",")
+    for T,p in enumerate(this_sum[1:]):
+      print " Goint to sum graph ",p," to ", intsToSum[K] 
+      graphSum(newgrs[intsToSum[K]],grs[int(p)])
+
+  grs = newgrs    
+#
 
 for j,gr in enumerate(grs):
  #COLOR = j+OFFSET
@@ -551,8 +623,9 @@ for j,gr in enumerate(grs):
  gr.SetLineWidth(2)
  gr.SetLineStyle(STYLE)
  gr.SetTitle("")
+
  for jj in range(len(SANDYLINES)): 
- 	grEXT[j][jj].SetMarkerColor(COLOR)
+ 	grEXT[j][jj].SetMarkerColor(COLOR+jj)
  	grEXT[j][jj].SetMarkerStyle(20+jj)
  	grEXT[j][jj].SetMarkerSize(0.9)
  if options.points: 
@@ -598,13 +671,15 @@ for j,gr in enumerate(grs):
 	if options.nofile: fname = ''
  	if options.signif:
 	 if len(fname)>0:
-	  leg.AddEntry(gr,"%s, %s=%.3f^{-%.3f}_{+%.3f} (xing=%.2f) (%.1f#sigma)"%(fname ,options.xvar,centres[j],centres[j]-lowers[j][0],uppers[j][0]-centres[j],CLEVELS[0],signifs[j]),legstyle)
+	  leg.AddEntry(gr,"#splitline{%s}{%s=%.3f^{-%.3f}_{+%.3f} (xing=%.2f) (%.1f#sigma)}"%(fname ,options.xvar,centres[j],centres[j]-lowers[j][0],uppers[j][0]-centres[j],CLEVELS[0],signifs[j]),legstyle)
+	  leg.AddEntry(ALLWHITEGR,"")
 	  if len(CLEVELS)>1: 
 	    for cli,cl in enumerate(CLEVELS[1:]): 
 	  	leg.AddEntry(gr,"       ^{-%.3f}_{+%.3f} (xing=%.2f) (%.1f#sigma)"%(centres[j]-lowers[j][cli+1],uppers[j][cli+1]-centres[j],cl,signifs[j]),"")
  	else:
 	 if len(fname)>0:
-	  leg.AddEntry(gr,"%s, %s=%.3f -%.3f +%.3f (xing=%.2f)"%( fname,options.xvar,centres[j],centres[j]-lowers[j][0],uppers[j][0]-centres[j],CLEVELS[0]),legstyle)
+	  leg.AddEntry(gr,"#splitline{%s}{%s=%.3f -%.3f +%.3f (xing=%.2f)}"%( fname,options.xvar,centres[j],centres[j]-lowers[j][0],uppers[j][0]-centres[j],CLEVELS[0]),legstyle)
+	  leg.AddEntry(ALLWHITEGR,"")
 	  if len(CLEVELS)>1: 
 	    for cli,cl in enumerate(CLEVELS[1:]): 
 	        leg.AddEntry(gr,"       -%.3f +%.3f (xing=%.2f)"%( centres[j]-lowers[j][cli+1],uppers[j][cli+1]-centres[j],cl),"")
@@ -674,6 +749,7 @@ if len(SANDYLINES)>0:
 	else: grEXT[j][jj].Draw("pY+") 
 
 pad1.cd()
+pad1.SetTopMargin(0.25)
 c.cd()
 if options.legend: leg.Draw()
 
