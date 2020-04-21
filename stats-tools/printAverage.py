@@ -12,6 +12,6 @@ parser.add_option("","--dxsysuncorr",default=0,type='float')
 parser.add_option("","--dysysuncorr",default=0,type='float')
 (options,args)=parser.parse_args()
 
-ROOT.gROOT.ProcessLine(".L ~/scratch0/tools/stats-tools/AverageMeasurements.C")
+ROOT.gROOT.ProcessLine(".L ~/work-tools/stats-tools/AverageMeasurements.C")
 from ROOT import AverageMeasurements
 AverageMeasurements(options.xv,options.dxstat,options.dxsysuncorr,options.dxsyscorr,options.yv,options.dystat,options.dysysuncorr,options.dysyscorr)
