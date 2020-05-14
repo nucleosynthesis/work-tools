@@ -49,17 +49,17 @@ for b in range(1,nbins+1):
   data.SetBinError(b,de[1])
 
   rth = tf.calcR(b)
-  print "bin %d"%b,"ratio_th=", rth, "data-bkg rat=", de[0],"+/-",de[1]
+  print "bin %d"%b,"ratio_th=", rth, "data-bkg rat=", de[0],"+/-",de[1],
   rata.SetBinContent(b,rth)
   rata.SetBinError(b,0)
   ratae.SetBinContent(b,rth)
-  #etot = tf.returnRMS(b,True,True)
-  etot=1.
+  etot = tf.returnRMS(b,True,True)
+  #etot=1.
   ratae.SetBinError(b,etot)
 
   ratae_noexp.SetBinContent(b,rth)
-  #e_noexp = tf.returnRMS(b,True,False)
-  e_noexp=1.
+  e_noexp = tf.returnRMS(b,True,False)
+  #e_noexp=1.
   ratae_noexp.SetBinError(b,e_noexp)
 
   ratae_nostat.SetBinContent(b,rth)

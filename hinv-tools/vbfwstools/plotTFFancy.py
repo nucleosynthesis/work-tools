@@ -37,14 +37,14 @@ hcentral.GetXaxis().SetTitleSize(0.06)
 #hcentral.GetYaxis().SetTitle(ytitle)
 #hcentral.SetMinimum(float(ymin))
 #hcentral.SetMaximum(float(ymax))
-hcentral.SetMinimum(float(ymin))
-hcentral.SetMaximum(float(ymax))
+hcentral.SetMinimum(0.5)
+hcentral.SetMaximum(1.5)
 hcentral.GetXaxis().SetNdivisions(010)
 
-leg = ROOT.TLegend(0.76,0.1,0.99,0.89)
+leg = ROOT.TLegend(0.76,0.6,0.99,0.89)
 leg.SetBorderSize(0)
 leg.SetTextFont(42)
-leg.AddEntry(hcentral,"Nominal #pm stat","PEL")
+leg.AddEntry(hcentral,"Nominal #pm MC. stat","PEL")
 
 # Now the variations 
 allpars = tf.list_of_parameters()
@@ -53,17 +53,25 @@ icol=1
 istyle=0
 iter = allpars.createIterator()
 allstat = []
+allewk = []
 while 1:
   tpar = iter.Next() # allpars.at(n)
   if tpar == None : break
   print" found parameter ", tpar.GetName()
-  if "ewkqcdratio_stat" in tpar.GetName(): continue # not sure why these should be in there ?
+  if "ewkqcdratio_stat" in tpar.GetName(): continue 
   if "QCDZ_SR_bin" in tpar.GetName() : continue
-  #if "_QCDwzratio_" in tpar.GetName(): continue 
   #if "QCDwzratio_stat_bin" in tpar.GetName(): continue
-
+  
+  if not ("EWKwzratio" in tpar.GetName() or "QCDwzratio" in tpar.GetName()): continue 
+  print " continue " 
   if "stat_" in tpar.GetName(): 
+   print "Add to stat ", tpar.GetName()
    allstat.append(tpar)
+   continue
+  
+  if "EWK_corr_" in tpar.GetName(): 
+   print "Add to corr ", tpar.GetName()
+   allewk.append(tpar)
    continue
 
   if tpar.isConstant(): continue 
@@ -72,12 +80,18 @@ while 1:
   down = tf.gimmeHist(tpar,hcentral,-1)
   colorthis = icol%9+1
   if colorthis == 5 : colorthis = 800
+  if colorthis == 3 : colorthis = ROOT.kGreen+2
   up.SetLineColor(colorthis)
   down.SetLineColor(colorthis)
   up.SetLineStyle(icol//9+1)
   down.SetLineStyle(icol//9+1)
+  up.SetLineWidth(2)
+  down.SetLineWidth(2)
+  up.SetName(tpar.GetName()+"_Up")
+  down.SetName(tpar.GetName()+"_Down")
   allh.append(up)
   allh.append(down)
+  
   leg.AddEntry(allh[-1],tpar.GetName(),"L")
   istyle+=1
   icol+=1
@@ -87,6 +101,14 @@ tgStat.SetMarkerStyle(20)
 tgStat.SetMarkerColor(1)
 tgStat.SetMarkerSize(1)
 
+tgEWK = ROOT.TGraphAsymmErrors()
+tgEWK.SetMarkerStyle(0)
+tgEWK.SetMarkerColor(ROOT.kOrange)
+tgEWK.SetLineColor(ROOT.kOrange)
+tgEWK.SetMarkerColor(0)
+tgEWK.SetMarkerSize(0)
+tgEWK.SetFillColor(ROOT.kOrange)
+
 # now we add any stat uncertainties 
 for b in range(1,(tf.nbins)+1):
  erru = 0 
@@ -94,13 +116,29 @@ for b in range(1,(tf.nbins)+1):
  for i,spar in enumerate(allstat): 
    up = tf.gimmeHist(spar,hcentral,1)
    dn = tf.gimmeHist(spar,hcentral,-1)
+   print "bin", b, up.GetName(),  abs(up.GetBinContent(b)-hcentral.GetBinContent(b))
    erru+=(abs(up.GetBinContent(b)-hcentral.GetBinContent(b)))**2
    errd+=(abs(dn.GetBinContent(b)-hcentral.GetBinContent(b)))**2
  hcv = hcentral.GetBinContent(b)
  tgStat.SetPoint(b-1,hcentral.GetBinCenter(b),1)#hcentral.GetBinContent(b))
  tgStat.SetPointError(b-1,0,0,(errd**0.5)/hcv,(erru**0.5)/hcv)
 
+for b in range(1,(tf.nbins)+1):
+ erru = 0 
+ errd = 0 
+ for i,spar in enumerate(allewk): 
+   up = tf.gimmeHist(spar,hcentral,1)
+   dn = tf.gimmeHist(spar,hcentral,-1)
+   erru+=(abs(up.GetBinContent(b)-hcentral.GetBinContent(b)))**2
+   errd+=(abs(dn.GetBinContent(b)-hcentral.GetBinContent(b)))**2
+ hcv = hcentral.GetBinContent(b)
+ bw = hcentral.GetBinWidth(b)/2
+ tgEWK.SetPoint(b-1,hcentral.GetBinCenter(b),1)#hcentral.GetBinContent(b))
+ tgEWK.SetPointError(b-1,bw,bw,(errd**0.5)/hcv,(erru**0.5)/hcv)
+ print "bin", b, erru
+
   
+leg.AddEntry(tgEWK,"#pm EWK NLO syst.","F")
 
 c = ROOT.TCanvas("c","c",960,640)
 c.SetBottomMargin(0.15)
@@ -111,6 +149,7 @@ for h in allh: h.Divide(hcentral)
 hcentral.Divide(hcentral)
 
 hcentral.Draw("histP")
+tgEWK.Draw("e2")
 for h in allh: h.Draw("histsame")
 tgStat.Draw("pe")
 leg.Draw()
@@ -126,11 +165,29 @@ tlat.DrawLatex(0.14,0.83,clab)
 c.SetTicky()
 c.SetTickx()
 c.SetGridy()
-c.SetGridx()
+#c.SetGridx()
+lines = []
+for i in range(2,(tf.nbins)+1): 
+  le = hcentral.GetBinLowEdge(i)
+  l = ROOT.TLine(le,hcentral.GetMinimum(),le,hcentral.GetMaximum())
+  l.SetLineColor(1)
+  l.SetLineStyle(2)
+  lines.append(l)
+for l in lines: l.Draw()
 c.RedrawAxis()
-c.SaveAs("%s_%s_%s.pdf"%(tf.cat,tf.Numerator,tf.Denominator))
-c.SaveAs("%s_%s_%s.png"%(tf.cat,tf.Numerator,tf.Denominator))
+c.SaveAs("VBF_%s_%s_%s.pdf"%(tf.cat,tf.Numerator,tf.Denominator))
+c.SaveAs("VBF_%s_%s_%s.png"%(tf.cat,tf.Numerator,tf.Denominator))
 
+fout = ROOT.TFile("VBF_%s_%s_%s.root"%(tf.cat,tf.Numerator,tf.Denominator),"RECREATE")
+hcentral.SetName("nominal")
+hcentral.Write()
+tgStat.SetName("MC_stat")
+tgStat.Write()
+tgEWK.SetName("EWK_uncert")
+tgEWK.Write()
+for h in allh: 
+ h.Write()
+fout.Close()
 """
 
 

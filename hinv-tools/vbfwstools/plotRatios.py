@@ -27,7 +27,7 @@ class TFValidator:
   wq = self.workspace.function("%sQCDV_W%s_bin%d"%(self.cat,self.WProc,b)).getVal()
   we = self.workspace.function("%sEWKV_W%s_bin%d"%(self.cat,self.WProc,b)).getVal()
 
-  print "%sQCDV_Z%s_bin%d"%(self.cat,self.ZProc,b), "%sQCDV_W%s_bin%d"%(self.cat,self.WProc,b)
+  #print "%sQCDV_Z%s_bin%d"%(self.cat,self.ZProc,b), "%sQCDV_W%s_bin%d"%(self.cat,self.WProc,b)
   return (ze+zq)/(we+wq)
 
 
@@ -43,6 +43,7 @@ class TFValidator:
   c = ROOT.TCanvas()
   rwzcental = self.calcR(b)
   hist = ROOT.TH1F("histo","",50,0.75*rwzcental,1.25*rwzcental)
+  SRCAT = "MTR_" if "MTR" in self.cat else "VTR_" 
   for t in range(self.ntoys): 
 
     if includeAll: 
@@ -58,15 +59,14 @@ class TFValidator:
 
   
     else:
-      #self.workspace.var("%sQCDwzratioQCDcorrSyst_pdf"%self.cat).setVal(self.r.Gaus(0,1))
-      #self.workspace.var("%sQCDwzratioQCDcorrSyst_muF"%self.cat).setVal(self.r.Gaus(0,1))
-      self.workspace.var("%sQCDwzratioQCDcorrSyst_muR"%self.cat).setVal(self.r.Gaus(0,1))
-      #self.workspace.var("%sQCDwzratio_EWK_corr_on_Strong_bin%d"%(self.cat,b)).setVal(self.r.Gaus(0,1))
-      print "%sQCDwzratioQCDcorrSyst_muR"%self.cat
-      #self.workspace.var("%sEWKwzratioQCDcorrSyst_pdf"%self.cat).setVal(self.r.Gaus(0,1))
-      #self.workspace.var("%sEWKwzratioQCDcorrSyst_muF"%self.cat).setVal(self.r.Gaus(0,1))
-      self.workspace.var("%sEWKwzratioQCDcorrSyst_muR"%self.cat).setVal(self.r.Gaus(0,1))
-      #self.workspace.var("%sEWKwzratio_EWK_corr_on_Strong_bin%d"%(self.cat,b)).setVal(self.r.Gaus(0,1))
+      self.workspace.var("%sQCDwzratioQCDcorrSyst_pdf"%SRCAT).setVal(self.r.Gaus(0,1))
+      self.workspace.var("%sQCDwzratioQCDcorrSyst_muF"%SRCAT).setVal(self.r.Gaus(0,1))
+      self.workspace.var("%sQCDwzratioQCDcorrSyst_muR"%SRCAT).setVal(self.r.Gaus(0,1))
+      self.workspace.var("%sQCDwzratio_EWK_corr_on_Strong_bin%d"%(SRCAT,b)).setVal(self.r.Gaus(0,1))
+      self.workspace.var("%sEWKwzratioQCDcorrSyst_pdf"%SRCAT).setVal(self.r.Gaus(0,1))
+      self.workspace.var("%sEWKwzratioQCDcorrSyst_muF"%SRCAT).setVal(self.r.Gaus(0,1))
+      self.workspace.var("%sEWKwzratioQCDcorrSyst_muR"%SRCAT).setVal(self.r.Gaus(0,1))
+      self.workspace.var("%sEWKwzratio_EWK_corr_on_Strong_bin%d"%(SRCAT,b)).setVal(self.r.Gaus(0,1))
    
 
       if (includeStat):
@@ -93,15 +93,15 @@ class TFValidator:
        if "ewkqcdratio_stat" in tpar.GetName(): continue 
        self.workspace.var(tpar.GetName()).setVal(0)
   else:
-    self.workspace.var("%sQCDwzratioQCDcorrSyst_pdf"%self.cat).setVal(0)
-    self.workspace.var("%sQCDwzratioQCDcorrSyst_muF"%self.cat).setVal(0)
-    self.workspace.var("%sQCDwzratioQCDcorrSyst_muR"%self.cat).setVal(0)
-    self.workspace.var("%sQCDwzratio_EWK_corr_on_Strong_bin%d"%(self.cat,b)).setVal(0)
+    self.workspace.var("%sQCDwzratioQCDcorrSyst_pdf"%SRCAT).setVal(0)
+    self.workspace.var("%sQCDwzratioQCDcorrSyst_muF"%SRCAT).setVal(0)
+    self.workspace.var("%sQCDwzratioQCDcorrSyst_muR"%SRCAT).setVal(0)
+    self.workspace.var("%sQCDwzratio_EWK_corr_on_Strong_bin%d"%(SRCAT,b)).setVal(0)
 
-    self.workspace.var("%sEWKwzratioQCDcorrSyst_pdf"%self.cat).setVal(0)
-    self.workspace.var("%sEWKwzratioQCDcorrSyst_muF"%self.cat).setVal(0)
-    self.workspace.var("%sEWKwzratioQCDcorrSyst_muR"%self.cat).setVal(0)
-    self.workspace.var("%sEWKwzratio_EWK_corr_on_Strong_bin%d"%(self.cat,b)).setVal(0)
+    self.workspace.var("%sEWKwzratioQCDcorrSyst_pdf"%SRCAT).setVal(0)
+    self.workspace.var("%sEWKwzratioQCDcorrSyst_muF"%SRCAT).setVal(0)
+    self.workspace.var("%sEWKwzratioQCDcorrSyst_muR"%SRCAT).setVal(0)
+    self.workspace.var("%sEWKwzratio_EWK_corr_on_Strong_bin%d"%(SRCAT,b)).setVal(0)
     
     if (includeStat):
       self.workspace.var("%sQCDwzratio_stat_bin%d"%(self.cat,b)).setVal(0)
