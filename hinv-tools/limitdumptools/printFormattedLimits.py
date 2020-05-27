@@ -27,7 +27,7 @@ def printme(l):
  l = [ "%.4f"%ll for ll in l] 
  return " = [ %s ]"%(",".join(l))
  
-names_normal = [(f.strip("higgsCombine")).strip("AsymptoticLimits.mH120.root") for f in filesin]
+names_normal = [((f.strip("higgsCombine")).replace(".AsymptoticLimits.mH120.root","")).replace("_"," ") for f in filesin]
 print "---------------|", " ".join(names_normal)
 print "Expected 2.5%  |", printme(aeyl_y)
 print "Expected 16%   |", printme(aeyl)
@@ -36,7 +36,7 @@ print "Expected 84%   |", printme(aeyh)
 print "Expected 97.5% |", printme(aeyh_y)
 
 for i in range(len(ay)):
- print "%30s"%names_normal[i], "%.4f"%ay[i]," & [%.2f -- %.2f]"%(aeyl[i],aeyh[i]), " & [%.2f -- %.2f] \\\\ "%(aeyl_y[i],aeyh_y[i])
+ print "%30s"%names_normal[i], " & %.2f"%ay[i]," & [%.2f -- %.2f]"%(aeyl[i],aeyh[i]), " & [%.2f -- %.2f] \\\\ "%(aeyl_y[i],aeyh_y[i])
 
 
 print "ay",printme(ay)

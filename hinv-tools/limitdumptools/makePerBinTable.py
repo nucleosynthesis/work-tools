@@ -59,7 +59,7 @@ for proc in order:
 tabl = "\\begin{tabular}{l|"+"|".join(["c" for b in range(hs.GetNbinsX())])+"}"
 data = "Observed & "+" & ".join(["0" for b in range(hs.GetNbinsX())]) + "\\\\"
 
-print "\\begin{table}"
+#print "\\begin{table}"
 print tabl
 print header
 print "\\hline"
@@ -69,6 +69,6 @@ print "\\hline"
 print data
 print "\\hline"
 print "\\end{tabular}"
-print "\\end{table}"
+#print "\\end{table}"
 
 #print "Total background pre-fit = ", (fi.Get("shapes_prefit/MTR_2017_SR/total_background")).Integral("width")
