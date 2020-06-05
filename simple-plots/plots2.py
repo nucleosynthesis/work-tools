@@ -1,10 +1,14 @@
+#!/usr/bin/python 
+
 import ROOT 
 import math
 import sys
 import os
 import gc 
 import fnmatch
+import array
 gc.disable()
+
 cfg_file = sys.argv[1]
 mode = sys.argv[2]
 job = -1
@@ -97,9 +101,12 @@ variables = cfg.variables.copy()
 
 for var in cfg.variables.keys():
   cfig = cfg.variables[var]
+  if cfig[1]=="BINS":
+    cfig[3]=array.array('d',cfig[3])
   for sample in cfg.order:
     if MKHISTOS: 
-      variables[var][-2].append(ROOT.TH1F(var+sample,";%s;Events"%cfig[0],cfig[1],cfig[2],cfig[3]))
+      if cfig[1]=="BINS": variables[var][-2].append(ROOT.TH1F(var+sample,";%s;Events"%cfig[0],cfig[2],cfig[3]))
+      else: variables[var][-2].append(ROOT.TH1F(var+sample,";%s;Events"%cfig[0],cfig[1],cfig[2],cfig[3]))
       variables[var][-2][-1].SetLineWidth(2)
       variables[var][-2][-1].SetLineColor(1)
       variables[var][-2][-1].SetFillColor(cfg.samples[sample][2])
@@ -108,7 +115,8 @@ for var in cfg.variables.keys():
     else: variables[var][-2].append(var+sample) 
   for signal in cfg.signals.keys():
     if MKHISTOS: 
-      variables[var][-1].append(ROOT.TH1F(var+signal,";%s;Events;"%cfig[0],cfig[1],cfig[2],cfig[3]))
+      if cfig[1]=="BINS": variables[var][-1].append(ROOT.TH1F(var+signal,";%s;Events;"%cfig[0],cfig[2],cfig[3]))
+      else: variables[var][-1].append(ROOT.TH1F(var+signal,";%s;Events;"%cfig[0],cfig[1],cfig[2],cfig[3]))
       variables[var][-1][-1].Sumw2()
       variables[var][-1][-1].SetLineWidth(4)
       variables[var][-1][-1].SetMarkerStyle(20)
@@ -119,7 +127,8 @@ for var in cfg.variables.keys():
       variables[var][-1][-1].GetXaxis().SetTitleSize(0.05)
     else: variables[var][-1].append(var+signal)
   if MKHISTOS:
-    variables[var][-3].append(ROOT.TH1F(var+"data",";%s;Events;"%cfig[0],cfig[1],cfig[2],cfig[3]))
+    if cfig[1]=="BINS": variables[var][-3].append(ROOT.TH1F(var+"data",";%s;Events;"%cfig[0],cfig[2],cfig[3]))
+    else: variables[var][-3].append(ROOT.TH1F(var+"data",";%s;Events;"%cfig[0],cfig[1],cfig[2],cfig[3]))
     variables[var][-3][-1].Sumw2()
     variables[var][-3][-1].SetLineWidth(4)
     variables[var][-3][-1].SetMarkerStyle(20)
@@ -168,7 +177,18 @@ def runLoop(config_list, obj, label, mark):
     # if ( ev%2000==0 or ev%1000==0): sys.stdout.flush(); 
 
      tr.GetEntry(ev)
-
+     ###################3 Take every 5th event which is preseleced !!!!! ####################, might be better to take event number and modulo it ?
+     #preselected+=1
+     #if tr.isData==1 and preselected%5!=0 : continue   
+     if hasattr(cfg,"BLIND") :
+      if cfg.BLIND==True :
+      	if tr.isData==1 and (tr.event)%5!=0: continue  
+     # assume its blind to be safe
+     else: 
+      if tr.isData==1 and (tr.event)%5!=0: continue  
+     ##############################################################################################################################################
+     if sample=="QCD" and tr.LHE_HT < 300 : continue # this is dodgy, why can't i get the sample in the preselection?
+     # continue 
      if not cfg.preselection(tr): continue
      ps = cfg.doAnalysis(tr,mark,i,w) 
      if ps>cfg.minWeight:
@@ -191,11 +211,15 @@ def checkAllFilesExist(samp):
 
 if COUNTJOBS: 
   # note that it won't do anything except add to the counter 
-  if hasattr(cfg, 'data'):  runLoop(cfg.data,cfg.data,"d",-3)
+  checkAllFilesExist(cfg.samples)
+  if hasattr(cfg, 'data'):  
+   checkAllFilesExist(cfg.data)
+   runLoop(cfg.data,cfg.data,"d",-3)
   if not hasattr(cfg, 'order'): 
     if len(cfg.samples.keys()): runLoop(cfg.samples.keys(),cfg.samples,"b",-2)
   else: 
     runLoop(cfg.order,cfg.samples,"b",-2)
+  checkAllFilesExist(cfg.signals)
   runLoop(cfg.signals.keys(),cfg.signals,"s",-1)
   print "Total number of jobs is %d"%cfg.RUNLOOPCOUNTER
   print ".. run with added option  '1...%d'"%cfg.RUNLOOPCOUNTER
@@ -266,10 +290,12 @@ if PLOTHISTOS:
 
     stk = ROOT.THStack("background_stack"+var,";%s;Events"%cfig[0])
     btot = ifile.Get(variables[var][-2][0]).Clone("total_background"+var)
+    if hasattr(cfg,"globalPlotScale"): btot.Scale(cfg.globalPlotScale)
     #print "For my VAR ", variables[var][-2]
     ordered_hists = []
     for i,h0 in enumerate(variables[var][-2]):
      h = ifile.Get(h0)
+     if hasattr(cfg,"globalPlotScale"): h.Scale(cfg.globalPlotScale)
      ordered_hists.append(h)
      #h.SetFillColor(cfg.samples[sample][2])
 
@@ -278,8 +304,11 @@ if PLOTHISTOS:
      stk.Add(h)
     
     ordered_hists.reverse()
-    datatot = ifile.Get(cfig[-3][0])
-    for dh in cfig[-3][1:-1]: datatot.Add(ifile.Get(dh.GetName()))
+    if hasattr(cfg,"data"):
+      datatot = ifile.Get(cfig[-3][0])
+      for dh in cfig[-3][1:-1]: datatot.Add(ifile.Get(dh.GetName()))
+    else: 
+      datatot = btot.Clone()
 
     datatot.SetMarkerStyle(20)
     datatot.SetMarkerSize(0.8)
@@ -293,17 +322,18 @@ if PLOTHISTOS:
     maxi = findMaxBin(datatot)
     stk.SetMaximum(max(1,1.2*maxi))
     if cfig[4]: 
-	  stk.SetMinimum(max(0.1*stk.GetMinimum(),0.1))
+	  stk.SetMinimum(max(0.001*stk.GetMinimum(),0.001))
 	  stk.SetMaximum(10*stk.GetMaximum())
 	  pad1.SetLogy(); 
     else: 
 	  stk.SetMinimum(0)
-	  stk.SetMaximum(1.2*stk.GetMaximum())
+	  #stk.SetMaximum(1.2*stk.GetMaximum())
     
     stk.Draw("hist")
     for i,h0 in enumerate(variables[var][-1]):
       h = ifile.Get(h0)
       h.Scale(cfg.signalScale)
+      if hasattr(cfg,"globalPlotScale"): h.Scale(cfg.globalPlotScale)
       h.SetLineWidth(2)
       h.Draw("histsame")
       if cfg.signalScale!=1: label = cfg.signals.keys()[i]+" x%g"%cfg.signalScale
