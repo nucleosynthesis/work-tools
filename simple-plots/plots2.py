@@ -77,8 +77,8 @@ def ratio(d,h):
     hn.SetBinError(b+1,ratio_he)
 
     #hn.SetBinError(b+1,0.51)
-  hn.SetMinimum(0)
-  hn.SetMaximum(2.05)
+  hn.SetMinimum(-0.55)
+  hn.SetMaximum(2.55)
   hn.SetLineColor(ROOT.kBlue+1)
   dn.SetFillColor(0)
   
@@ -403,6 +403,7 @@ if PLOTHISTOS:
     hrl = histversion(hr)
     hrl.Draw("histsame")
     datatot_r.Draw("pesame")
+    pad2.SetGridy()
     pad2.RedrawAxis()
 
     c.cd()

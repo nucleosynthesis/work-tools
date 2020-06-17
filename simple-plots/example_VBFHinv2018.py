@@ -9,11 +9,13 @@ import copy
 
 treeName    = "Events"
 
-L           = 59740.56520/5      # = 1/fb?
+#L           = 59740.56520/5      # = 1/fb?
+L           = 59740.56520      # = 1/fb?
 signalScale = 0.19
+#globalPlotScale = 5
 minWeight   = -9999999
-odir 	    = "plots_2018"
-BLIND=True
+odir 	    = "plots_2018_newVTR"
+BLIND=False
 
 directory = "/vols/cms/magnan/Hinvisible/Run2/200527/output_skims_2018/Data/"
 pre_mc    = "/vols/cms/magnan/Hinvisible/Run2/200527/output_skims_2018/Nominal/" 
@@ -195,10 +197,10 @@ variables = {
 ,	   "dijet_M_0p5to1" :["m_{jj} (GeV) (0.5 < min dphi(j,MET) < 1)","BINS",9,[200,400,600,900,1200,1500,2000,2750,3500,5000],True,0,[],[],[]] 
 ,	   "dijet_M_bins" :["m_{jj} (GeV)",10,200,6000,False,0,[],[],[]] 
 ,	   "dijet_dEta"	  :["#Delta#eta_{jj}",50,0,10,True,0,[],[],[]] 
-,	   "Leading_jet_eta":["#eta_{j^{1}}",50,-5,5,True,0,[],[],[]] 
-,	   "Subleading_jet_eta":["#eta_{j^{2}}",50,-5,5,True,0,[],[],[]] 
-,	   "Leading_jet_phi":["#phi_{j^{1}}",50,-4,4,True,0,[],[],[]] 
-,	   "Subleading_jet_phi":["#phi_{j^{2}}",50,-4,4,True,0,[],[],[]] 
+,	   "Leading_jet_eta":["#eta_{j^{1}}",50,-5,5,False,0,[],[],[]] 
+,	   "Subleading_jet_eta":["#eta_{j^{2}}",50,-5,5,False,0,[],[],[]] 
+,	   "Leading_jet_phi":["#phi_{j^{1}}",50,-4,4,False,0,[],[],[]] 
+,	   "Subleading_jet_phi":["#phi_{j^{2}}",50,-4,4,False,0,[],[],[]] 
 ,	   "Leading_jet_pt":["pT_{j^{1}} (GeV)",60,0,500,True,0,[],[],[]] 
 ,	   "Subleading_jet_pt":["pT_{j^{2}} (GeV)",60,0,500,True,0,[],[],[]] 
 ,	   "jet3_eta":["#eta_{j^{3}}",50,-5,5,True,0,[],[],[]] 
@@ -280,7 +282,7 @@ def setInfo(fnam,pnam,label):
 def preselection(tr):
      if tr.MetNoLep < 160 : return False
      if tr.nJets < 2: return False
-     if (tr.MET_pt - tr.CaloMET_pt)/tr.MetNoLep > 0.5 : return False
+     if abs(tr.MET_pt - tr.CaloMET_pt)/tr.MetNoLep > 0.5 : return False
      if tr.isData==1 and (not (tr.met_filters_2018_data>0.1)): return False
      if (not tr.isData==1) and (not (tr.met_filters_2018_mc>0.1)): return False
      if tr.nMediumBJet > 0.5 : return False
@@ -288,7 +290,7 @@ def preselection(tr):
      if tr.isData : 
        if tr.nVetoElectron > 0.5 : return False 
        if tr.nLooseMuon    > 0.5 : return False 
-       if tr.nVLooseTau    > 0.5 : return False 
+       if tr.nVLooseTauFix    > 0.5 : return False 
      
      return True
      # here define a simple analysis (selection of cuts or whatever)
@@ -297,10 +299,10 @@ def selectVTR(tr):
      
      if tr.MetNoLep >= 250 : return False 
      if tr.lMjj     < 900 : return False
-     #if abs(tr.JetMetmindPhi) < 1.8 : return False # moved this to later to allow for N-1 plots
+     #if abs(tr.JetMetmindPhi) < 1.8 : return False
      if tr.lMjj_jet1_pt    < 140 : return False
      if tr.lMjj_jet2_pt    < 70 : return False
-     #if abs(tr.lMjj_dijet_dphi) > 1.5 : return False # moved this to later to allow for N-1 plots
+     #if abs(tr.lMjj_dijet_dphi) > 1.5 : return False
      if abs(tr.lMjj_dijet_deta) < 1   : return False
      if not (tr.lMjj_jet1_eta*tr.lMjj_jet2_eta < 0): return False
      if abs(tr.lMjj_jet1_eta)    > 4.7 : return False
@@ -318,7 +320,7 @@ def selectMTR(tr):
      if tr.dijet_M  < 200 : return False
      if tr.Leading_jet_pt     < 80 : return False
      if tr.Subleading_jet_pt  < 40 : return False
-     #if abs(tr.dijet_dPhi)    > 1.5 : return False  # moved this to later to allow for N-1 plots
+     #if abs(tr.dijet_dPhi)    > 1.5 : return False
      if abs(tr.dijet_dEta)    < 1   : return False
      if not (tr.Leading_jet_eta*tr.Subleading_jet_eta < 0): return False
      if abs(tr.Leading_jet_eta)    > 4.7 : return False
@@ -397,10 +399,10 @@ def doAnalysis(tr,entry,i,w):
        w=1
      else :
         if passSel == "VTR": 
-            w = tr.trigger_weight_VBF2018*tr.puWeight*tr.xs_weight*tr.VLooseSITTau_eventVetoW*tr.VetoElectron_eventVetoW*tr.LooseMuon_eventVetoW*L
+            w = tr.trigger_weight_VBF2018*tr.puWeight*tr.xs_weight*tr.VLooseTauFix_eventVetoW*tr.VetoElectron_eventVetoW*tr.LooseMuon_eventVetoW*L
             w *= tr.fnlo_SF_EWK_corr*tr.fnlo_SF_QCD_corr_QCD_proc_VTR*tr.fnlo_SF_QCD_corr_EWK_proc
         else: 
-            w = tr.trigger_weight_METMHT2018*tr.puWeight*tr.xs_weight*tr.VLooseSITTau_eventVetoW*tr.VetoElectron_eventVetoW*tr.LooseMuon_eventVetoW*L
+            w = tr.trigger_weight_METMHT2018*tr.puWeight*tr.xs_weight*tr.VLooseTauFix_eventVetoW*tr.VetoElectron_eventVetoW*tr.LooseMuon_eventVetoW*L
             w *= tr.fnlo_SF_EWK_corr*tr.fnlo_SF_QCD_corr_QCD_proc_MTR*tr.fnlo_SF_QCD_corr_EWK_proc
     
 
@@ -408,9 +410,11 @@ def doAnalysis(tr,entry,i,w):
     
      ptRelBalance = (dijet.Pt()-tr.MetNoLep)/tr.MetNoLep
     
-    # Clean up crummy data :) -------------------------------------
+     if passSel == "VTR": MAXtkrel=0.6
+     else: MAXtkrel=0.8
+     # Clean up crummy data :) -------------------------------------
      # remove the horns 
-     if (tr.MetNoLep - tr.TkMET_pt)/tr.MetNoLep > 0.8 : 
+     if (tr.MetNoLep - tr.TkMET_pt)/tr.MetNoLep > MAXtkrel : 
        if abs(jet1.Eta()) < 3.2 and abs(jet1.Eta()) > 2.8 : return 0
        if abs(jet2.Eta()) < 3.2 and abs(jet2.Eta()) > 2.8 : return 0
     
@@ -418,19 +422,35 @@ def doAnalysis(tr,entry,i,w):
      if (tr.MetPhiNoLep > -1.8 and tr.MetPhiNoLep < -0.6) : return 0
      # ------------------------------------------------------------
 
-     # fill in the N-1 plot (no cut is applied on the delta phi variables yet
      if passSel=="VTR":
-		if abs(tr.JetMetmindPhi) > 1.8 :   Fill(passSel+"dijet_dPhi_Nm1",jet1.DeltaPhi(jet2),w)
-     else :
-		if abs(tr.JetMetmindPhi) > 0.5 :   Fill(passSel+"dijet_dPhi_Nm1",jet1.DeltaPhi(jet2),w)
+      if abs(tr.JetMetmindPhi) > 1.8 : 
+      	  Fill(passSel+"dijet_dPhi_Nm1",jet1.DeltaPhi(jet2),w)
+     else : 
+      if abs(tr.JetMetmindPhi) > 0.5 : 
+          Fill(passSel+"dijet_dPhi_Nm1",jet1.DeltaPhi(jet2),w)
 
-     if abs(jet1.DeltaPhi(jet2)) < 1.5 :  
+     if passSel=="VTR":
+      if abs(jet1.DeltaPhi(jet2)) < 1.8 :  
      	Fill(passSel+"JetMetmindPhi_Nm1",tr.JetMetmindPhi,w) 
-     	if ptRelBalance < 1    :Fill(passSel+"JetMetmindPhi_Nm1_lowpTrel",tr.JetMetmindPhi,w) 
-     	else:   	       Fill(passSel+"JetMetmindPhi_Nm1_highpTrel",tr.JetMetmindPhi,w) 
-
-     # now the rest of the analysis !
-     if abs(jet1.DeltaPhi(jet2)) > 1.5 : return 0
+     	if ptRelBalance < 1   : Fill(passSel+"JetMetmindPhi_Nm1_lowpTrel",tr.JetMetmindPhi,w) 
+     	else:   	       
+		Fill(passSel+"JetMetmindPhi_Nm1_highpTrel",tr.JetMetmindPhi,w) 
+     else : 
+      if abs(jet1.DeltaPhi(jet2)) < 1.5 :  
+     	Fill(passSel+"JetMetmindPhi_Nm1",tr.JetMetmindPhi,w) 
+     	if ptRelBalance < 1   : Fill(passSel+"JetMetmindPhi_Nm1_lowpTrel",tr.JetMetmindPhi,w) 
+     	else:   	       
+		Fill(passSel+"JetMetmindPhi_Nm1_highpTrel",tr.JetMetmindPhi,w) 
+     
+     
+     if passSel=="VTR":
+	     # fill the dijet mass in the window 
+	     if abs(jet1.DeltaPhi(jet2)) < 1.8 and tr.JetMetmindPhi >0.5 and tr.JetMetmindPhi <1: Fill(passSel+"dijet_M_0p5to1",dijet4vec.M(),w)
+	     if abs(jet1.DeltaPhi(jet2)) >= 1.8 : return 0
+     else:
+	     # fill the dijet mass in the window 
+	     if abs(jet1.DeltaPhi(jet2)) < 1.5 and tr.JetMetmindPhi >0.5 and tr.JetMetmindPhi <1: Fill(passSel+"dijet_M_0p5to1",dijet4vec.M(),w)
+	     if abs(jet1.DeltaPhi(jet2)) >= 1.5 : return 0
 
      # before the cut on QCD CR/SR
      Fill(passSel+"dijet_pT_reldiff_MET_SRCR",ptRelBalance,w)
