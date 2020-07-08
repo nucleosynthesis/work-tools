@@ -5,6 +5,9 @@ It also runs a "closure" check in the A/B regions where the JetHT data is used (
 on in the future. 
 
 # Example for running the VTR 2017 region 
+
+Below is an example for running the script for the VTR 2017 region, which can be adapted for the other regions
+
 `python mkQCD.py out_VTR_2017.root --function 2 --ymin 0.0001 --ymax 1000  --label "VTR 2017" --sr_cut 1.8 --logy --fit_min 0 --fit_max 1.5 --max_blind 2 --mjj_min 900`
 
 where `out_VTR_2017.root` is the file produced from S. Webb. 
