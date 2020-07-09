@@ -19,7 +19,7 @@ For running in 2018 of course, just change 2017 to 2018. Instead, for running on
    * `--fit_min 0 --fit_max 1 `
    * `--max_blind 1.2` (although we can probably remove that one now)
 
-**NOTE** - Gor the MTR regions, the current version of the analysis uses the option `--function 1`, but it could be good to check the difference this gives to `--function 2` which I think is better motivated. 
+**NOTE** - For the MTR regions, the current version of the analysis uses the option `--function 1`, but it could be good to check the difference this gives to `--function 2` which I think is better motivated. 
 
 # Outputs 
 
