@@ -9,8 +9,9 @@ on in the future.
 Below is an example for running the script for the VTR 2017 region, which can be adapted for the other regions
 
 `python mkQCD.py out_VTR_2017.root --function 2 --ymin 0.0001 --ymax 1000  --label "VTR 2017" --sr_cut 1.8 --logy --fit_min 0 --fit_max 1.5 --max_blind 2 --mjj_min 900`
-
 where `out_VTR_2017.root` is the file produced from S. Webb. 
+
+You can run with `python mkQCD.py -h` for more explanation on what the options are. 
 
 For running in 2018 of course, just change 2017 to 2018. Instead, for running on MTR, I would suggest the following options 
 
