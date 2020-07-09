@@ -178,7 +178,6 @@ def fixHistogram(h):
   for b in range(1,hnew.GetNbinsX()+1): 
     hnew.SetBinContent(b,vals[b-1])
     hnew.SetBinError(b,errs[b-1])
-  print bins
   return hnew
 
 # -----------------------------------------------------------------------------------------------
@@ -737,7 +736,7 @@ hf_qcd2.SetMarkerSize(0)
 #hf_qcd2.SetFillStyle(3001)
 for i in range(hf_qcd2.GetNbinsX()): 
   hf_qcd2.SetBinError(i+1,rms_fqcd2[i])
-  print "Fake data ->", i+1, rms_fqcd2[i]
+  #print "Fake data ->", i+1, rms_fqcd2[i]
 
 
 # and plot the stuff
