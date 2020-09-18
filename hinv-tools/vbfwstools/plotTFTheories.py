@@ -29,8 +29,10 @@ ymin = sys.argv[7]
 ymax = sys.argv[8]
 out  = sys.argv[9]
 
-lstr = sys.argv[10]#
-clab = sys.argv[11]#
+lstr = "59.8 fb^{-1} (13 TeV, 2018)" 
+if "2017" in tf.cat : lstr = "41.5 fb^{-1} (13 TeV, 2017)"
+ #sys.argv[10]#
+clab = sys.argv[10]#
 
 fdummy = ROOT.TFile.Open("%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
 hdummy = fdummy.Get("shapes_prefit/%s_SR/qqH_hinv"%sys.argv[1])
