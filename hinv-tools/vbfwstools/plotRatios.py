@@ -22,10 +22,10 @@ class TFValidator:
 
  def calcR(self,b):
 
-  zq = self.workspace.function("%sQCDV_Z%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
-  ze = self.workspace.function("%sEWKV_Z%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
-  wq = self.workspace.function("%sQCDV_W%s_bin%d"%(self.cat,self.WProc,b)).getVal()
-  we = self.workspace.function("%sEWKV_W%s_bin%d"%(self.cat,self.WProc,b)).getVal()
+  zq = self.workspace.function("%s_QCDV_Z%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
+  ze = self.workspace.function("%s_EWKV_Z%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
+  wq = self.workspace.function("%s_QCDV_W%s_bin%d"%(self.cat,self.WProc,b)).getVal()
+  we = self.workspace.function("%s_EWKV_W%s_bin%d"%(self.cat,self.WProc,b)).getVal()
 
   #print "%sQCDV_Z%s_bin%d"%(self.cat,self.ZProc,b), "%sQCDV_W%s_bin%d"%(self.cat,self.WProc,b)
   return (ze+zq)/(we+wq)
@@ -36,8 +36,8 @@ class TFValidator:
   r2=0
   mean=0 
   
-  allpars  = self.workspace.function("%sQCDV_W%s_bin%d"%(self.cat,self.WProc,b)).getParameters(ROOT.RooArgSet())
-  allpars2 = self.workspace.function("%sEWKV_W%s_bin%d"%(self.cat,self.WProc,b)).getParameters(ROOT.RooArgSet())
+  allpars  = self.workspace.function("%s_QCDV_W%s_bin%d"%(self.cat,self.WProc,b)).getParameters(ROOT.RooArgSet())
+  allpars2 = self.workspace.function("%s_EWKV_W%s_bin%d"%(self.cat,self.WProc,b)).getParameters(ROOT.RooArgSet())
   allpars.add(allpars2)
   
   c = ROOT.TCanvas()
@@ -70,8 +70,8 @@ class TFValidator:
    
 
       if (includeStat):
-        self.workspace.var("%sQCDwzratio_stat_bin%d"%(self.cat,b)).setVal(self.r.Gaus(0,1))
-        self.workspace.var("%sEWKwzratio_stat_bin%d"%(self.cat,b)).setVal(self.r.Gaus(0,1))
+        self.workspace.var("%s_QCDwzratio_stat_bin%d"%(self.cat,b)).setVal(self.r.Gaus(0,1))
+        self.workspace.var("%s_EWKwzratio_stat_bin%d"%(self.cat,b)).setVal(self.r.Gaus(0,1))
 
     
     rwz = self.calcR(b)
@@ -104,8 +104,8 @@ class TFValidator:
     self.workspace.var("%sEWKwzratio_EWK_corr_on_Strong_bin%d"%(SRCAT,b)).setVal(0)
     
     if (includeStat):
-      self.workspace.var("%sQCDwzratio_stat_bin%d"%(self.cat,b)).setVal(0)
-      self.workspace.var("%sEWKwzratio_stat_bin%d"%(self.cat,b)).setVal(0)
+      self.workspace.var("%s_QCDwzratio_stat_bin%d"%(self.cat,b)).setVal(0)
+      self.workspace.var("%s_EWKwzratio_stat_bin%d"%(self.cat,b)).setVal(0)
 
   hist.Draw()
   hist.Fit("gaus")
@@ -115,28 +115,29 @@ class TFValidator:
 
  def calcRdata(self,b):
 
-  data_Z = self.fit_file.Get("shapes_prefit/Z%s/data"%self.ZR)
+  print "shapes_prefit/%s_Z%s/data"%(self.cat,self.ZR)
+  data_Z = self.fit_file.Get("shapes_prefit/%s_Z%s/data"%(self.cat,self.ZR))
   Zd     = data_Z.GetY()[b-1]
   Ze     = 0.5*(data_Z.GetErrorYhigh(b-1)+data_Z.GetErrorYlow(b-1))
   
-  data_W = self.fit_file.Get("shapes_prefit/W%s/data"%self.WR)
+  data_W = self.fit_file.Get("shapes_prefit/%s_W%s/data"%(self.cat,self.WR))
   Wd     = data_W.GetY()[b-1]
   We     = 0.5*(data_W.GetErrorYhigh(b-1)+data_W.GetErrorYlow(b-1))
 
   # Remove the backgrounds!
-  TT_Z  = self.fit_file.Get("shapes_prefit/Z%s/TOP"%self.ZR)
+  TT_Z  = self.fit_file.Get("shapes_prefit/%s_Z%s/TOP"%(self.cat,self.ZR))
   ttZ_d = TT_Z.GetBinContent(b)
-  VV_Z  = self.fit_file.Get("shapes_prefit/Z%s/VV"%self.ZR)
+  VV_Z  = self.fit_file.Get("shapes_prefit/%s_Z%s/VV"%(self.cat,self.ZR))
   VVZ_d = VV_Z.GetBinContent(b)
   
   # Remove the backgrounds!
-  TT_W  = self.fit_file.Get("shapes_prefit/W%s/TOP"%self.WR)
+  TT_W  = self.fit_file.Get("shapes_prefit/%s_W%s/TOP"%(self.cat,self.WR))
   ttW_d = TT_W.GetBinContent(b)
-  VV_W  = self.fit_file.Get("shapes_prefit/W%s/VV"%self.WR)
+  VV_W  = self.fit_file.Get("shapes_prefit/%s_W%s/VV"%(self.cat,self.WR))
   VVW_d = VV_W.GetBinContent(b)
-  EZll_W  = self.fit_file.Get("shapes_prefit/W%s/EWKZll"%self.WR)
+  EZll_W  = self.fit_file.Get("shapes_prefit/%s_W%s/EWKZll"%(self.cat,self.WR))
   EZllW_d = EZll_W.GetBinContent(b)
-  QZll_W  = self.fit_file.Get("shapes_prefit/W%s/DY"%self.WR)
+  QZll_W  = self.fit_file.Get("shapes_prefit/%s_W%s/DY"%(self.cat,self.WR))
   QZllW_d = QZll_W.GetBinContent(b)
 
   Wd -= (ttW_d+VVW_d+EZllW_d+QZllW_d)

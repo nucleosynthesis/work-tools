@@ -22,10 +22,10 @@ class TFValidator:
 
  def calcR(self,b):
 
-  zq = self.workspace.function("%sQCDV_%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
-  ze = self.workspace.function("%sEWKV_%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
-  wq = self.workspace.function("%sQCDV_%s_bin%d"%(self.cat,self.WProc,b)).getVal()
-  we = self.workspace.function("%sEWKV_%s_bin%d"%(self.cat,self.WProc,b)).getVal()
+  zq = self.workspace.function("%s_QCDV_%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
+  ze = self.workspace.function("%s_EWKV_%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
+  wq = self.workspace.function("%s_QCDV_%s_bin%d"%(self.cat,self.WProc,b)).getVal()
+  we = self.workspace.function("%s_EWKV_%s_bin%d"%(self.cat,self.WProc,b)).getVal()
 
   return (ze+zq)/(we+wq)
 
@@ -35,8 +35,8 @@ class TFValidator:
   r2=0
   mean=0 
  
-  allpars  = self.workspace.function("%sQCDV_%s_bin%d"%(self.cat,self.ZProc,b)).getParameters(ROOT.RooArgSet())
-  allpars2 = self.workspace.function("%sEWKV_%s_bin%d"%(self.cat,self.ZProc,b)).getParameters(ROOT.RooArgSet())
+  allpars  = self.workspace.function("%s_QCDV_%s_bin%d"%(self.cat,self.ZProc,b)).getParameters(ROOT.RooArgSet())
+  allpars2 = self.workspace.function("%s_EWKV_%s_bin%d"%(self.cat,self.ZProc,b)).getParameters(ROOT.RooArgSet())
   allpars.add(allpars2)
 
   npar = allpars.getSize()
@@ -97,24 +97,24 @@ class TFValidator:
 
  def calcRdata(self,b):
 
-  data_Z = self.fit_file.Get("shapes_prefit/%s/data"%self.ZR)
+  data_Z = self.fit_file.Get("shapes_prefit/%s_%s/data"%(self.cat,self.ZR))
   Zd     = data_Z.GetY()[b-1]
   Ze     = 0.5*(data_Z.GetErrorYhigh(b-1)+data_Z.GetErrorYlow(b-1))
   
-  data_W = self.fit_file.Get("shapes_prefit/%s/data"%self.WR)
+  data_W = self.fit_file.Get("shapes_prefit/%s_%s/data"%(self.cat,self.WR))
   Wd     = data_W.GetY()[b-1]
   We     = 0.5*(data_W.GetErrorYhigh(b-1)+data_W.GetErrorYlow(b-1))
 
   # Remove the backgrounds!
-  TT_Z  = self.fit_file.Get("shapes_prefit/%s/TOP"%self.ZR)
+  TT_Z  = self.fit_file.Get("shapes_prefit/%s_%s/TOP"%(self.cat,self.ZR))
   ttZ_d = TT_Z.GetBinContent(b)
-  VV_Z  = self.fit_file.Get("shapes_prefit/%s/VV"%self.ZR)
+  VV_Z  = self.fit_file.Get("shapes_prefit/%s_%s/VV"%(self.cat,self.ZR))
   VVZ_d = VV_Z.GetBinContent(b)
   
   # Remove the backgrounds!
-  TT_W  = self.fit_file.Get("shapes_prefit/%s/TOP"%self.WR)
+  TT_W  = self.fit_file.Get("shapes_prefit/%s_%s/TOP"%(self.cat,self.WR))
   ttW_d = TT_W.GetBinContent(b)
-  VV_W  = self.fit_file.Get("shapes_prefit/%s/VV"%self.WR)
+  VV_W  = self.fit_file.Get("shapes_prefit/%s_%s/VV"%(self.cat,self.WR))
   VVW_d = VV_W.GetBinContent(b)
 
   Wd -= (ttW_d+VVW_d)
