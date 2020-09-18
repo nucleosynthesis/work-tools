@@ -1,3 +1,0 @@
-Checkout with 
-
-bash <(curl -s https://raw.githubusercontent.com/nucleosynthesis/work-tools/master/hinv-tools/vbfwstools/sparse-checkout-VBFWS-ssh.sh)
