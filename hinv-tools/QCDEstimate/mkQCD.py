@@ -13,7 +13,7 @@ NTOYS=1000
 XMAX= 5000 
 ######################### LEAVE BELOW HERE ALONE ################################################################
 
-# Command line options 
+# Command line option
 from optparse import OptionParser
 parser=OptionParser()
 parser.add_option("","--function",default=2,type=int, help="Define function to be used for mindphi fit (see top of code for functions, defined in makeFunction)")
@@ -92,6 +92,7 @@ def makeFunction(name, WHICH,  mini,maxi, prestring=""):
    return ret 
 def makehist(h): 
   hnew = h.Clone(); hnew.SetName("%s_hist"%h.GetName())
+  hnew.GetYaxis().SetTitle("Events/GeV")
   for b in range(1,h.GetNbinsX()+1): 
     bc = h.GetBinContent(b)
     bw = h.GetBinWidth(b)
@@ -103,6 +104,7 @@ def makehist(h):
 
 def makebinned(h): 
   hnew = h.Clone(); hnew.SetName("%s_counts"%h.GetName())
+  hnew.GetYaxis().SetTitle("Events")
   for b in range(1,h.GetNbinsX()+1): 
     bc = h.GetBinContent(b)
     bw = h.GetBinWidth(b)
