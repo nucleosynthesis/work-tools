@@ -4,6 +4,10 @@ The code is all inside `mkQCD.py` - this code takes histograms (provided by S. W
 It also runs a "closure" check in the A/B regions where the JetHT data is used (lower MET). This closure is not great just yet but will be worked 
 on in the future. 
 
+To get the codes, run
+
+`bash <(curl -s https://raw.githubusercontent.com/nucleosynthesis/work-tools/master/hinv-tools/vbfwstools/sparse-checkout-VBFWS-ssh.sh)`
+
 # Example for running the VTR 2017 region 
 
 Below is an example for running the script for the VTR 2017 region, which can be adapted for the other regions
