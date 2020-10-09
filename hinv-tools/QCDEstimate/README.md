@@ -6,7 +6,7 @@ on in the future.
 
 To get the codes, run
 
-`bash <(curl -s https://raw.githubusercontent.com/nucleosynthesis/work-tools/master/hinv-tools/vbfwstools/sparse-checkout-VBFWS-ssh.sh)`
+`bash <(curl -s https://raw.githubusercontent.com/nucleosynthesis/work-tools/master/hinv-tools/QCDEstimate/sparse-checkout-VBFQCD-ssh.sh)`
 
 # Example for running the VTR 2017 region 
 
