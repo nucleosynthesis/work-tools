@@ -27,6 +27,7 @@ parser.add_option("","--fit_min",default=0. ,type=float,help="Minimum value for 
 parser.add_option("","--fit_max",default=1.0,type=float,help="Maximum value for the fit range in mindphi(j,MET)")
 parser.add_option("","--sr_cut",default=0.5,type=float,help="Definition of mindphi(j,MET) cut for SR (MTR should be 0.5, VTR should be 1.8) - important to get correct normalisation")
 parser.add_option("","--max_blind",default=3.5,type=float,help="Data above this value will be blinded in the mindphi(j,MET) plots - default is not to blind")
+parser.add_option("","--background_scale_factor",default=1.0,type=float,help="Scale the other backgrounds (eg from what we learn in the post fit)") 
 
 parser.add_option("","--label",default="",type=str, help="Add a string (eg MTR 2017) to add to plots and also for naming output files")
 (options,args)=parser.parse_args()
@@ -202,6 +203,8 @@ data  = fdphi.Get("MET_CR")
 qcd_dphi = fdphi.Get("QCD_CR")
 total_bkg = fdphi.Get("BackgroundSum_CR")
 
+#allow option to scale
+total_bkg.Scale(options.background_scale_factor)
 # we need to clean up a bit the data, for bins > 1.5, lets blind it 
 data.GetXaxis().SetTitle("min#Delta#phi(j,p_{T}^{miss})")
 for b in range(1,data.GetNbinsX()+1): 
@@ -586,6 +589,44 @@ ROOT.gStyle.SetOptStat(0)
 # --------------------------------------------------------------- end of 3.
 
 # 4. Go and get the (background subtracted) histogram from Sam and re-normalise to the yield we just found 
+# First make a plot 
+data_plot = (fin.Get("MET_CR")).Clone(); data_plot.SetName("data_for_plot")
+background_plot = (fin.Get("VV_CR")).Clone(); background_plot.SetName("non_QCD_backgrounds")
+for bkg_plot in ["TOP_CR","DY_CR","EWKZll_CR","EWKZNUNU_CR","ZJETS_CR","EWKW_CR","WJETS_CR"]:
+ background_plot.Add((fin.Get(bkg_plot)).Clone())
+background_plot.Scale(options.background_scale_factor)
+cMass = ROOT.TCanvas("cmass","cmass",680,540)
+cMass.cd()
+data_plot = fixHistogram(data_plot)
+background_plot = fixHistogram(background_plot)
+data_plot = makehist(data_plot)
+background_plot = makehist(background_plot)
+#data_plot.GetYaxis().SetTitle("Events/GeV")
+data_plot.GetXaxis().SetTitle("M_{jj} (GeV)")
+leg_mass = ROOT.TLegend(0.5,0.76,0.89,0.89)
+leg_mass.SetBorderSize(0)
+data_plot.SetMarkerStyle(20)
+data_plot.SetMarkerSize(0.8)
+data_plot.SetMarkerColor(1)
+data_plot.SetLineColor(1)
+data_plot.SetLineWidth(2)
+data_plot.Draw("pel")
+background_plot.SetFillColor(ROOT.kGray)
+background_plot.SetLineColor(1)
+background_plot.SetLineWidth(2)
+background_plot.Draw("histsame")
+data_plot.Draw("pelsame")
+leg_mass.AddEntry(data_plot,"Data in QCD CR","PEL")
+leg_mass.AddEntry(background_plot,"Non QCD background in QCD CR","F")
+leg_mass.Draw()
+cMass.SetLogy()
+cMass.RedrawAxis()
+latmjj = ROOT.TLatex()
+latmjj.SetNDC()
+latmjj.SetTextFont(42)
+latmjj.DrawLatex(0.12,0.92,"%s"%(mystring))
+copyAndStoreCanvas("%s_mjj_CR"%fin.GetName(),cMass,pdir)
+
 
 qcdFromFile = fin.Get("BackgroundSubtractedData_CR")
 integral = qcdFromFile.Integral()
