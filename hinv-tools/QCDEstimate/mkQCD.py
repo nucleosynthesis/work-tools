@@ -47,6 +47,8 @@ ROOT.gROOT.SetBatch(1)
 
 fin = ROOT.TFile.Open(args[0])
 
+fout = ROOT.TFile("%s_qcdDD.root"%fin.GetName(),"RECREATE")
+pdir = fout.mkdir("Plots")
 # Remap options
 SELECTFUNC = int(options.function) 
 
@@ -181,6 +183,16 @@ def fixHistogram(h):
     hnew.SetBinContent(b,vals[b-1])
     hnew.SetBinError(b,errs[b-1])
   return hnew
+
+copies = []
+def copyAndStoreCanvas(name,can,fi):
+  cans = can.Clone(); 
+  cans.SetName(name)
+  for obj in cans.GetListOfPrimitives():
+    obj.SetName(obj.GetName()+name)
+    copies.append(obj)
+  fi.WriteTObject(cans)
+  can.SaveAs("%s.pdf"%name)
 
 # -----------------------------------------------------------------------------------------------
 # 1. First we are going to make a fit of the min deltaPhi distribution (below MAXFIT)
@@ -321,7 +333,6 @@ hf_qcd.SetMarkerSize(0)
 #hf_qcd.SetFillStyle(3001)
 for i in range(hf_qcd.GetNbinsX()): 
   hf_qcd.SetBinError(i+1,rms_fqcd[i])
-  print "Real data ->", i+1, rms_fqcd[i]
 
 # and plot the stuff
 if LOGY: 
@@ -448,7 +459,6 @@ hist_f_total_with_errors = hist_f_total.Clone(); hist_f_total_with_errors.SetNam
 hist_f_total_with_errors.SetFillStyle(1001)
 hist_f_total_with_errors.SetFillColor(ROOT.kMagenta-9)
 for i in range(hist_f_total_with_errors.GetNbinsX()): 
-  print rms_ftot[i]
   hist_f_total_with_errors.SetBinError(i+1,rms_ftot[i])
 hist_f_total_with_errors.Divide(hist_f_total)
 hist_f_total_with_errors.SetMarkerSize(0)
@@ -493,7 +503,7 @@ hf_qcd_noerrors = hf_qcd.Clone(); hf_qcd_noerrors.SetName("hf_qcd_noerrors")
 for b in range(hf_qcd_noerrors.GetNbinsX()): hf_qcd_noerrors.SetBinError(b+1,0)
 hf_qcd.Divide(hf_qcd_noerrors)
 qcd_dphi_ratio.Divide(hf_qcd_noerrors)
-for b in range(qcd_dphi.GetNbinsX()): print "qcd ratio ->", qcd_dphi_ratio.GetBinContent(b+1)
+#for b in range(qcd_dphi.GetNbinsX()): print "qcd ratio ->", qcd_dphi_ratio.GetBinContent(b+1)
 qcd_axis = ratio_data.Clone() 
 qcd_axis.GetYaxis().SetTitle("Multijet MC/f_{QCD}")
 qcd_axis.GetYaxis().SetTitleSize(0.15)
@@ -555,8 +565,8 @@ if MINFIT>0:
  lminp4.SetLineColor(1)
  lminp4.SetLineStyle(3)
  lminp4.Draw()
-c0.SaveAs("%s_qcdDD_normfit.pdf"%fin.GetName())
-
+#c0.SaveAs("%s_qcdDD_normfit.pdf"%fin.GetName())
+copyAndStoreCanvas("%s_qcdDD_normfit"%fin.GetName(),c0,pdir)
 # ---------------------------------------------------------------- end of 2
 # 3. Draw the toys (hisogram of the norm and correlation matrix)
 ROOT.gStyle.SetOptStat(origStat)
@@ -569,8 +579,10 @@ for p in range(1,npar[0]+1):
   cP.cd(p+1)
   allhistogramspars[p-1].Draw()
   lat.DrawLatex(0.12,0.92,"Mean=%.3f"%allhistogramspars[p-1].GetMean()+", RMS=%.3f"%allhistogramspars[p-1].GetRMS())
-cP.SaveAs("%s_qcdEstimate_toys.pdf"%fin.GetName())
+#cP.SaveAs("%s_qcdEstimate_toys.pdf"%fin.GetName())
+copyAndStoreCanvas("%s_qcdEstimate_toys"%fin.GetName(),cP,pdir)
 ROOT.gStyle.SetOptStat(0)
+
 # --------------------------------------------------------------- end of 3.
 
 # 4. Go and get the (background subtracted) histogram from Sam and re-normalise to the yield we just found 
@@ -628,7 +640,6 @@ leg2.AddEntry(qcdMCH,"Multijet MC in SR","PEL")
 leg2.AddEntry(qcdMethodA,"Data driven MJ template in SR (method A)","L")
 
 lat.DrawLatex(0.12,0.92,"%s"%(mystring))
-#c.SaveAs("%s_qcdDD.pdf"%fin.GetName())
 # --------------------------------------------------------------- end of 4.
 # 5. Closure in QCD MC A)
 # I want to take the Region A and use it to predict region B!
@@ -957,7 +968,8 @@ if MINFIT>0:
  lminpf4.Draw()
 
 
-c4.SaveAs("%s_qcdDD_fakefit.pdf"%fin.GetName())
+#c4.SaveAs("%s_qcdDD_fakefit.pdf"%fin.GetName())
+copyAndStoreCanvas("%s_qcdDD_fakefit"%fin.GetName(),c4,pdir)
 
 qcdFromFakeFile = fin.Get("QCDMC_CR")
 integralfake = qcdFromFakeFile.Integral()
@@ -992,7 +1004,8 @@ cD.SetLogy()
 cD.RedrawAxis()
 lat.DrawLatex(0.62,0.92,"(%.1f #times total lumi.)"%(BLINDFACTOR))
 lat.DrawLatex(0.12,0.92,mystring)
-cD.SaveAs("%s_qcdDD.pdf"%fin.GetName())
+#cD.SaveAs("%s_qcdDD.pdf"%fin.GetName())
+copyAndStoreCanvas("%s_qcdDD"%fin.GetName(),cD,pdir)
 
 
 qcdH.Draw("axis")
@@ -1026,7 +1039,8 @@ lat.DrawLatex(0.62,0.92,"(%.1f #times total lumi.)"%(BLINDFACTOR))
 lat.DrawLatex(0.12,0.92,mystring+" Region B")
 legAB.Draw()
 
-cD.SaveAs("%s_qcdDD_closureAB.pdf"%fin.GetName())
+#cD.SaveAs("%s_qcdDD_closureAB.pdf"%fin.GetName())
+copyAndStoreCanvas("%s_qcdDD_closureAB"%fin.GetName(),cD,pdir)
 
 cR = ROOT.TCanvas("cR","cR",600,320)
 qcdClosure_ratio = qcdClosure.Clone(); qcdClosure_ratio.SetName("closure")
@@ -1034,7 +1048,8 @@ qcdClosure_ratio.Divide(qcdMCH)
 qcdClosure_ratio.Draw()
 qcdClosure_ratio.SetMaximum(5)
 qcdClosure_ratio.SetMinimum(0)
-cR.SaveAs("%s_qcdDD_closure_ratio.pdf"%fin.GetName())
+#cR.SaveAs("%s_qcdDD_closure_ratio.pdf"%fin.GetName())
+copyAndStoreCanvas("%s_qcdDD_closure_ratio.pdf"%fin.GetName(),cR,pdir)
 
 print "Data driven total (in full lumi) = ", qcdH.Integral("width")/BLINDFACTOR, "+/-", rms*norm_qcd/BLINDFACTOR
 print "QCD MC total (in full lumi) = ", qcdMCH.Integral("width")/BLINDFACTOR
@@ -1051,11 +1066,12 @@ print "Err |",mcYE
 mcYC = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdClosure.GetBinContent(b)*qcdClosure.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
 print "clo.|",mcYC
 # --------------------------------------------------------------- end of 5.
-
-if not options.mkworkspace: sys.exit()
-
+if not options.mkworkspace: 
+  print "Plots stored in ", fout.GetName()
+  fout.Close()
+  sys.exit()
 # 6. And finally the histogram for the workspace ! 
-fout = ROOT.TFile("%s_qcdDD.root"%fin.GetName(),"RECREATE")
+
 # make an original histogram (proper hist)
 qcdCountHisto = makebinned(qcdH)
 qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
@@ -1072,6 +1088,7 @@ fout.WriteTObject(wspace)
 fout.Close()
 
 wspace = 0
+print "Plots and workspace stored in ", fout.GetName()
 sys.exit()
 # --------------------------------------------------------------- end of 6.
 
