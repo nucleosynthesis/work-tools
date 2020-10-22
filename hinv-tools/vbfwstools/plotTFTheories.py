@@ -29,8 +29,10 @@ ymin = sys.argv[7]
 ymax = sys.argv[8]
 out  = sys.argv[9]
 
-lstr = "59.8 fb^{-1} (13 TeV, 2018)" 
-if "2017" in tf.cat : lstr = "41.5 fb^{-1} (13 TeV, 2017)"
+lstr = "59.7 fb^{-1} (13 TeV, 2018)" 
+if "2017" in tf.cat : 
+ if "VTR" in tf.cat : lstr = "36.7 fb^{-1} (13 TeV, 2017)"
+ else : lstr = "41.5 fb^{-1} (13 TeV, 2017)"
  #sys.argv[10]#
 clab = sys.argv[10]#
 
