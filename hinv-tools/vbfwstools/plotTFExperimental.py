@@ -2,22 +2,23 @@ import ROOT
 import plotRatios_experimental
 import sys
 
-BASE_DIRECTORY="fast_datacard_input_200127"
+BASE_DIRECTORY="../../../fitdiagnostics_perchannel_output/"
+#BASE_DIRECTORY="../../../"
 
 ROOT.gStyle.SetOptStat(0)
 ROOT.gROOT.SetBatch(1)
 
 # inputs are cat Numerator Proc, Denominaor proc, Num Region, Denom Region, ytitle, ymin, ymax, outname
-tf2017 = plotRatios_experimental.TFValidator("%s/test_df_%s2017_2020v1/all_percategory.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/test_df_%s2017_2020v1/fitDiagnostics.root"%(BASE_DIRECTORY,sys.argv[1]))
-tf2018 = plotRatios_experimental.TFValidator("%s/test_df_%s2018_2020v1/all_percategory.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/test_df_%s2018_2020v1/fitDiagnostics.root"%(BASE_DIRECTORY,sys.argv[1]))
+tf2017 = plotRatios_experimental.TFValidator("%s/%s_2017.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s_2017.root"%(BASE_DIRECTORY,sys.argv[1]))
+tf2018 = plotRatios_experimental.TFValidator("%s/%s_2018.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s_2018.root"%(BASE_DIRECTORY,sys.argv[1]))
 
-tf2017.cat   = sys.argv[1]+"2017_"
+tf2017.cat   = sys.argv[1]+"_2017"
 tf2017.ZProc = sys.argv[2]
 tf2017.WProc = sys.argv[3]
 tf2017.ZR = sys.argv[4]
 tf2017.WR = sys.argv[5]
 
-tf2018.cat   = sys.argv[1]+"2018_"
+tf2018.cat   = sys.argv[1]+"_2018"
 tf2018.ZProc = sys.argv[2]
 tf2018.WProc = sys.argv[3]
 tf2018.ZR = sys.argv[4]
@@ -31,8 +32,8 @@ out  = sys.argv[9]
 lstr = sys.argv[10]#
 clab = sys.argv[11]#
 
-fdummy = ROOT.TFile.Open("%s/test_df_%s2017_2020v1/fitDiagnostics.root"%(BASE_DIRECTORY,sys.argv[1]))
-hdummy = fdummy.Get("shapes_prefit/SR/VBFHtoInv")
+fdummy = ROOT.TFile.Open("%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,tf2017.cat))
+hdummy = fdummy.Get("shapes_prefit/%s_SR/qqH_hinv"%tf2017.cat)
 
 data2017 = hdummy.Clone(); data2017.SetName("data2017")
 data2018 = hdummy.Clone(); data2018.SetName("data2018")
@@ -138,7 +139,8 @@ lat.Draw()
 tlat = ROOT.TLatex()
 tlat.SetTextFont(42)
 tlat.SetNDC()
-tlat.DrawLatex(0.11,0.92,"#bf{CMS} #it{Preliminary}")
+#tlat.DrawLatex(0.11,0.92,"#bf{CMS} #it{Preliminary}")
+tlat.DrawLatex(0.11,0.92,"#bf{CMS}")
 tlat.DrawLatex(0.44,0.92,lstr)
 tlat.SetTextSize(0.04)
 tlat.DrawLatex(0.14,0.83,clab)

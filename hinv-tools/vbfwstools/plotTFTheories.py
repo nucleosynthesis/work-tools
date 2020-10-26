@@ -6,7 +6,7 @@ ROOT.gStyle.SetOptStat(0)
 ROOT.gROOT.SetBatch(1)
 
 
-BASE_DIRECTORY="fast_datacard_input_200127"
+BASE_DIRECTORY="../../../"
 
 """
 tf.ZProc = "mumu"
@@ -16,7 +16,7 @@ tf.WR = "MUNU"
 """
 
 # inputs are cat ZProc, WProc, ZR, WR, ytitle, ymin, ymax, outname
-tf = plotRatios.TFValidator("%s/test_df_%s2020v1/all_percategory.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/test_df_%s2020v1/fitDiagnostics.root"%(BASE_DIRECTORY,sys.argv[1]))
+tf = plotRatios.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
 
 tf.cat   = sys.argv[1]
 tf.ZProc = sys.argv[2]
@@ -29,11 +29,15 @@ ymin = sys.argv[7]
 ymax = sys.argv[8]
 out  = sys.argv[9]
 
-lstr = sys.argv[10]#
-clab = sys.argv[11]#
+lstr = "59.7 fb^{-1} (13 TeV, 2018)" 
+if "2017" in tf.cat : 
+ if "VTR" in tf.cat : lstr = "36.7 fb^{-1} (13 TeV, 2017)"
+ else : lstr = "41.5 fb^{-1} (13 TeV, 2017)"
+ #sys.argv[10]#
+clab = sys.argv[10]#
 
-fdummy = ROOT.TFile.Open("%s/test_df_%s2020v1/fitDiagnostics.root"%(BASE_DIRECTORY,sys.argv[1]))
-hdummy = fdummy.Get("shapes_prefit/SR/VBFHtoInv")
+fdummy = ROOT.TFile.Open("%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
+hdummy = fdummy.Get("shapes_prefit/%s_SR/qqH_hinv"%sys.argv[1])
 
 data = hdummy.Clone(); data.SetName("data")
 rata  = hdummy.Clone(); rata.SetName("ratio")
@@ -120,7 +124,8 @@ lat.Draw()
 tlat = ROOT.TLatex()
 tlat.SetTextFont(42)
 tlat.SetNDC()
-tlat.DrawLatex(0.11,0.92,"#bf{CMS} #it{Preliminary}")
+#tlat.DrawLatex(0.11,0.92,"#bf{CMS} #it{Preliminary}")
+tlat.DrawLatex(0.11,0.92,"#bf{CMS}")
 tlat.DrawLatex(0.44,0.92,lstr)
 tlat.SetTextSize(0.04)
 tlat.DrawLatex(0.14,0.83,clab)

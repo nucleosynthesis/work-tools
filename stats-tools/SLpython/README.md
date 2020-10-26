@@ -21,7 +21,7 @@ cd work-tools/stats-tools/SLpython
 
 You can replace the model with whichever search you like, provided the format is the same. 
 
-3) Run the code with `python sl-python.py --model mymodel`. This will produce a scan of  ![](https://latex.codecogs.com/gif.latex?%5Cinline%20-2%5CLog%5C%5BL%28%5Cmu%29%5C%5D), where ![](https://latex.codecogs.com/gif.latex?%5Cinline%20L)  is the **profiled** likelihood and ![](https://latex.codecogs.com/gif.latex?%5Cinline%20%5Cmu) is 
+3) Run the code with `python sl-python.py --model mymodel`. This will produce a scan of  L(mu), where ![](https://latex.codecogs.com/gif.latex?%5Cinline%20L)  is the **profiled** likelihood and ![](https://latex.codecogs.com/gif.latex?%5Cinline%20%5Cmu) is 
 the signal strength parameter which multiplies the expected signal in each bin. 
 
 Use `--help` for options on setting the range of the parameter and number of points to scan
