@@ -27,6 +27,7 @@ parser.add_option("","--fit_min",default=0. ,type=float,help="Minimum value for 
 parser.add_option("","--fit_max",default=1.0,type=float,help="Maximum value for the fit range in mindphi(j,MET)")
 parser.add_option("","--sr_cut",default=0.5,type=float,help="Definition of mindphi(j,MET) cut for SR (MTR should be 0.5, VTR should be 1.8) - important to get correct normalisation")
 parser.add_option("","--max_blind",default=3.5,type=float,help="Data above this value will be blinded in the mindphi(j,MET) plots - default is not to blind")
+parser.add_option("","--background_scale_factor",default=1.0,type=float,help="Scale the other backgrounds (eg from what we learn in the post fit)") 
 
 parser.add_option("","--label",default="",type=str, help="Add a string (eg MTR 2017) to add to plots and also for naming output files")
 (options,args)=parser.parse_args()
@@ -187,6 +188,9 @@ fdphi = fin.Get("MetNoLep_CleanJet_mindPhi")#ROOT.TFile.Open(fdphi_name)
 data  = fdphi.Get("MET_CR")
 qcd_dphi = fdphi.Get("QCD_CR")
 total_bkg = fdphi.Get("BackgroundSum_CR")
+
+#allow option to scale
+total_bkg.Scale(options.background_scale_factor)
 
 # we need to clean up a bit the data, for bins > 1.5, lets blind it 
 data.GetXaxis().SetTitle("min#Delta#phi(j,p_{T}^{miss})")
@@ -554,6 +558,7 @@ if MINFIT>0:
  lminp4.SetLineStyle(3)
  lminp4.Draw()
 c0.SaveAs("%s_qcdDD_normfit.pdf"%fin.GetName())
+c0.SaveAs("%s_qcdDD_normfit.png"%fin.GetName())
 
 # ---------------------------------------------------------------- end of 2
 # 3. Draw the toys (hisogram of the norm and correlation matrix)
@@ -568,6 +573,7 @@ for p in range(1,npar[0]+1):
   allhistogramspars[p-1].Draw()
   lat.DrawLatex(0.12,0.92,"Mean=%.3f"%allhistogramspars[p-1].GetMean()+", RMS=%.3f"%allhistogramspars[p-1].GetRMS())
 cP.SaveAs("%s_qcdEstimate_toys.pdf"%fin.GetName())
+cP.SaveAs("%s_qcdEstimate_toys.png"%fin.GetName())
 ROOT.gStyle.SetOptStat(0)
 # --------------------------------------------------------------- end of 3.
 
@@ -956,10 +962,12 @@ if MINFIT>0:
 
 
 c4.SaveAs("%s_qcdDD_fakefit.pdf"%fin.GetName())
+c4.SaveAs("%s_qcdDD_fakefit.png"%fin.GetName())
 
 qcdFromFakeFile = fin.Get("QCDMC_CR")
 integralfake = qcdFromFakeFile.Integral()
-qcdFromFakeFile.Scale(norm_qcd_fake/integralfake);
+if integralfake > 0:
+   qcdFromFakeFile.Scale(norm_qcd_fake/integralfake);
 qcdClosure = fixHistogram(qcdFromFakeFile)
 qcdClosure = makehist(qcdClosure)
 
@@ -991,6 +999,7 @@ cD.RedrawAxis()
 lat.DrawLatex(0.62,0.92,"(%.1f #times total lumi.)"%(BLINDFACTOR))
 lat.DrawLatex(0.12,0.92,mystring)
 cD.SaveAs("%s_qcdDD.pdf"%fin.GetName())
+cD.SaveAs("%s_qcdDD.png"%fin.GetName())
 
 
 qcdH.Draw("axis")
@@ -1025,6 +1034,7 @@ lat.DrawLatex(0.12,0.92,mystring+" Region B")
 legAB.Draw()
 
 cD.SaveAs("%s_qcdDD_closureAB.pdf"%fin.GetName())
+cD.SaveAs("%s_qcdDD_closureAB.png"%fin.GetName())
 
 cR = ROOT.TCanvas("cR","cR",600,320)
 qcdClosure_ratio = qcdClosure.Clone(); qcdClosure_ratio.SetName("closure")
@@ -1033,6 +1043,7 @@ qcdClosure_ratio.Draw()
 qcdClosure_ratio.SetMaximum(5)
 qcdClosure_ratio.SetMinimum(0)
 cR.SaveAs("%s_qcdDD_closure_ratio.pdf"%fin.GetName())
+cR.SaveAs("%s_qcdDD_closure_ratio.png"%fin.GetName())
 
 print "Data driven total (in full lumi) = ", qcdH.Integral("width")/BLINDFACTOR, "+/-", rms*norm_qcd/BLINDFACTOR
 print "QCD MC total (in full lumi) = ", qcdMCH.Integral("width")/BLINDFACTOR
