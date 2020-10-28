@@ -49,6 +49,8 @@ ROOT.gROOT.SetBatch(1)
 fin = ROOT.TFile.Open(args[0])
 
 fout = ROOT.TFile("%s_qcdDD.root"%fin.GetName(),"RECREATE")
+wspace = ROOT.RooWorkspace()
+wspace.SetName("qcd_wspace")
 pdir = fout.mkdir("Plots")
 # Remap options
 SELECTFUNC = int(options.function) 
@@ -187,14 +189,16 @@ def fixHistogram(h):
 
 copies = []
 def copyAndStoreCanvas(name,can,fi):
-  cans = can.Clone(); 
+  cans = can.Clone();
   cans.SetName(name)
   for obj in cans.GetListOfPrimitives():
     obj.SetName(obj.GetName()+name)
     copies.append(obj)
+  #copies.append(cans)
+  #ROOT.SetOwnership( cans, False )
   fi.WriteTObject(cans)
-  can.SaveAs("%s.pdf"%name)
-  can.SaveAs("%s.png"%name)
+  cans.SaveAs("%s.pdf"%name)
+  cans.SaveAs("%s.png"%name)
 
 # -----------------------------------------------------------------------------------------------
 # 1. First we are going to make a fit of the min deltaPhi distribution (below MAXFIT)
@@ -1128,18 +1132,17 @@ qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
 fout.WriteTObject(qcdCountHisto)
 
 #sys.exit()
-wspace = ROOT.RooWorkspace("qcd_wspace")
+#fout.cd()
+#ROOT.SetOwnership( wspace, True )
 lVarFit = ROOT.RooRealVar("mjj_%s"%(mystring.replace(" ","_")),"M_{jj} (GeV)",xmin,5000);
 
 qcd_dh_nominal = ROOT.RooDataHist("QCD_DD","QCD Data-driven",ROOT.RooArgList(lVarFit),qcdCountHisto)
 
-getattr(wspace,"import")(qcd_dh_nominal,ROOT.RooFit.Rename(qcd_dh_nominal.GetName()))
+getattr(wspace,"import")(qcd_dh_nominal)#,ROOT.RooFit.Rename(qcd_dh_nominal.GetName()))
 fout.WriteTObject(wspace)
-fout.Close()
-
-wspace = 0
 print "Plots and workspace stored in ", fout.GetName()
-sys.exit()
+
+wspace.Delete()
 # --------------------------------------------------------------- end of 6.
 
 
