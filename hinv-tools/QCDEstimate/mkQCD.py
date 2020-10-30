@@ -192,7 +192,8 @@ def copyAndStoreCanvas(name,can,fi):
   cans = can.Clone();
   cans.SetName(name)
   for obj in cans.GetListOfPrimitives():
-    obj.SetName(obj.GetName()+name)
+    try : obj.SetName(obj.GetName()+name)
+    except: pass
     copies.append(obj)
   #copies.append(cans)
   #ROOT.SetOwnership( cans, False )
@@ -1029,6 +1030,32 @@ for b in range(fillfakeH.GetNbinsX()):
 fillfakeH.SetFillColor(ROOT.kGreen)
 fillfakeH.SetFillStyle(3001)
 
+# also make alternative templates for shape variations 
+transfer_factor_qcd_mc   = fin.Get("BackgroundSubtractedData_B")
+transfer_factor_qcd_mc_d = fin.Get("BackgroundSubtractedData_A")
+transfer_factor_qcd_mc.Scale(1./transfer_factor_qcd_mc.Integral())
+transfer_factor_qcd_mc_d.Scale(1./transfer_factor_qcd_mc_d.Integral())
+transfer_factor_qcd_mc.Divide(transfer_factor_qcd_mc_d)
+
+transfer_factor_qcd_mc.Fit("pol1")
+qcdH_shape_up = qcdH.Clone(); qcdH_shape_up.SetName("qcd_DD_shapeUncertaintyUp")
+qcdH_shape_dn = qcdH.Clone(); qcdH_shape_dn.SetName("qcd_DD_shapeUncertaintyDown")
+for b in range(1,qcdH.GetNbinsX()+1): 
+  dijet_M = qcdH.GetBinCenter(b)
+  content_b = qcdH.GetBinContent(b)
+  ratio_b = transfer_factor_qcd_mc.GetFunction("pol1").Eval(dijet_M)
+  qcdH_shape_up.SetBinContent(b,content_b*ratio_b)
+  qcdH_shape_dn.SetBinContent(b,content_b*(1./ratio_b))
+  qcdH_shape_up.SetBinError(b,0)
+  qcdH_shape_dn.SetBinError(b,0)
+
+qcdH_shape_up.Scale(qcdH.Integral("width")/qcdH_shape_up.Integral("width"))
+qcdH_shape_dn.Scale(qcdH.Integral("width")/qcdH_shape_dn.Integral("width"))
+
+qcdH_shape_up.SetLineColor(4); qcdH_shape_up.SetLineStyle(2); qcdH_shape_up.SetFillStyle(0)
+qcdH_shape_dn.SetLineColor(4); qcdH_shape_dn.SetLineStyle(2); qcdH_shape_dn.SetFillStyle(0)
+
+
 cD = ROOT.TCanvas("cD","cD",600,420)
 cD.cd()
 cD.SetBottomMargin(0.15)
@@ -1041,6 +1068,12 @@ qcdMethodA.Draw("histsame")
 #fillH.SetLineColor(ROOT.kMagenta)
 #leg2.AddEntry(qcdClosure,"Closure test in QCD MC","PEL")
 #leg2.AddEntry(fillfakeH,"#pm norm uncert. (from fake data fit)","F")
+
+
+#cD.cd()
+qcdH_shape_up.Draw("histsame")
+qcdH_shape_dn.Draw("histsame")
+leg2.AddEntry(qcdH_shape_up,"up/down shape uncertainty","L")
 leg2.Draw()
 
 #qcdH.SetMinimum(0.00001)
@@ -1052,6 +1085,17 @@ lat.DrawLatex(0.12,0.92,mystring)
 #cD.SaveAs("%s_qcdDD.pdf"%fin.GetName())
 copyAndStoreCanvas("%s_qcdDD"%fin.GetName(),cD,pdir)
 
+cT = ROOT.TCanvas("cT","cT",600,420)
+cT.cd()
+ROOT.gStyle.SetOptFit(1111)
+ROOT.gStyle.SetOptStat(1)
+transfer_factor_qcd_mc.GetYaxis().SetTitle("m_{jj} shape in B / m_{jj} shape in A")
+transfer_factor_qcd_mc.Draw("pel")
+transfer_factor_qcd_mc.GetFunction("pol1").SetLineColor(1);
+transfer_factor_qcd_mc.GetFunction("pol1").Draw("same");
+copyAndStoreCanvas("%s_qcdDD_fitTransferForShapeSys"%fin.GetName(),cT,pdir)
+ROOT.gStyle.SetOptFit(0)
+ROOT.gStyle.SetOptStat(0)
 
 qcdH.Draw("axis")
 qcdClosure.SetLineColor(ROOT.kGreen+2)
@@ -1122,14 +1166,22 @@ qcdCountHisto = makebinned(qcdH)
 qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
 fout.WriteTObject(qcdCountHisto)
 
+# and shape uncertainties 
+qcdCountH_shape_up = makebinned(qcdH_shape_up); qcdCountH_shape_up.Scale((norm_qcd/BLINDFACTOR)/qcdCountH_shape_up.Integral())
+qcdCountH_shape_dn = makebinned(qcdH_shape_dn); qcdCountH_shape_dn.Scale((norm_qcd/BLINDFACTOR)/qcdCountH_shape_dn.Integral())
+
 #sys.exit()
 #fout.cd()
 #ROOT.SetOwnership( wspace, True )
 lVarFit = ROOT.RooRealVar("mjj_%s"%(mystring.replace(" ","_")),"M_{jj} (GeV)",xmin,5000);
 
 qcd_dh_nominal = ROOT.RooDataHist("QCD_DD","QCD Data-driven",ROOT.RooArgList(lVarFit),qcdCountHisto)
+qcd_dh_up      = ROOT.RooDataHist("QCD_DD_Multijet_%s_shapeUncertaintyUp"%((options.label).replace(" ","_"))  ,"QCD Data-driven (shape up)"   ,ROOT.RooArgList(lVarFit),qcdCountH_shape_up)
+qcd_dh_down    = ROOT.RooDataHist("QCD_DD_Multijet_%s_shapeUncertaintyDown"%((options.label).replace(" ","_")),"QCD Data-driven (shape down))",ROOT.RooArgList(lVarFit),qcdCountH_shape_dn)
 
-getattr(wspace,"import")(qcd_dh_nominal)#,ROOT.RooFit.Rename(qcd_dh_nominal.GetName()))
+getattr(wspace,"import")(qcd_dh_nominal)
+getattr(wspace,"import")(qcd_dh_up)     
+getattr(wspace,"import")(qcd_dh_down)   
 fout.WriteTObject(wspace)
 print "Plots and workspace stored in ", fout.GetName()
 
