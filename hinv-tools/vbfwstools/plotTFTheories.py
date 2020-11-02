@@ -16,6 +16,8 @@ tf.WR = "MUNU"
 
 # inputs are cat ZProc, WProc, ZR, WR, ytitle, ymin, ymax, outname
 if "photon" in sys.argv[3]:
+  # better check if it makes sense in this case 
+  if "VTR" in sys.argv[1]: sys.exit("No photon CR in VTR, skipping")
   import plotRatiosPhotons
   tf = plotRatiosPhotons.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
   tf.PProc = sys.argv[3]
