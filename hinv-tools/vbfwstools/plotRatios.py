@@ -129,7 +129,7 @@ class TFValidator:
   hist.Draw()
   hist.Fit("gaus")
   c.SaveAs("bin%d.pdf"%b)
-  return rms, list_of_params
+  return rms, list_of_parameters
 
 
  def calcRdata(self,b):
