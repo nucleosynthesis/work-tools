@@ -55,6 +55,7 @@ class TFValidator:
        # not even sure of these 2 but they are constant at least 
        if "TF_syst_fnlo_SF" in tpar.GetName(): continue 
        if "ewkqcdratio_stat" in tpar.GetName(): continue 
+       if "TR_fnlo_SF" in tpar.GetName(): continue 
        self.workspace.var(tpar.GetName()).setVal(self.r.Gaus(0,1))
 
   
@@ -91,6 +92,7 @@ class TFValidator:
        # not even sure of these 2 but they are constant at least 
        if "TF_syst_fnlo_SF" in tpar.GetName(): continue 
        if "ewkqcdratio_stat" in tpar.GetName(): continue 
+       if "TR_fnlo_SF" in tpar.GetName(): continue 
        self.workspace.var(tpar.GetName()).setVal(0)
   else:
     self.workspace.var("%sQCDwzratioQCDcorrSyst_pdf"%SRCAT).setVal(0)
