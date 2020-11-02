@@ -19,6 +19,8 @@ class TFValidator:
   self.WProc = "munu"
   self.ZR = "MUMU"
   self.WR = "MUNU"
+  
+  self.year = "2017"
 
  def calcR(self,b):
 
@@ -44,6 +46,9 @@ class TFValidator:
   rwzcental = self.calcR(b)
   hist = ROOT.TH1F("histo","",50,0.75*rwzcental,1.25*rwzcental)
   SRCAT = "MTR_" if "MTR" in self.cat else "VTR_" 
+  
+  list_of_parameters = []
+  
   for t in range(self.ntoys): 
 
     if includeAll: 
@@ -55,7 +60,9 @@ class TFValidator:
        # not even sure of these 2 but they are constant at least 
        if "TF_syst_fnlo_SF" in tpar.GetName(): continue 
        if "ewkqcdratio_stat" in tpar.GetName(): continue 
+       if "TR_fnlo_SF" in tpar.GetName(): continue
        self.workspace.var(tpar.GetName()).setVal(self.r.Gaus(0,1))
+       list_of_parameters.append(tpar.GetName())
 
   
     else:
@@ -67,11 +74,21 @@ class TFValidator:
       self.workspace.var("%sEWKwzratioQCDcorrSyst_muF"%SRCAT).setVal(self.r.Gaus(0,1))
       self.workspace.var("%sEWKwzratioQCDcorrSyst_muR"%SRCAT).setVal(self.r.Gaus(0,1))
       self.workspace.var("%sEWKwzratio_EWK_corr_on_Strong_bin%d"%(SRCAT,b)).setVal(self.r.Gaus(0,1))
+      list_of_parameters.append("%sQCDwzratioQCDcorrSyst_pdf"%SRCAT)
+      list_of_parameters.append("%sQCDwzratioQCDcorrSyst_muF"%SRCAT)
+      list_of_parameters.append("%sQCDwzratioQCDcorrSyst_muR"%SRCAT)
+      list_of_parameters.append("%sQCDwzratio_EWK_corr_on_Strong_biin%d"%(SRCAT,b))
+      list_of_parameters.append("%sEWKwzratioQCDcorrSyst_pdf"%SRCAT)
+      list_of_parameters.append("%sEWKwzratioQCDcorrSyst_muF"%SRCAT)
+      list_of_parameters.append("%sEWKwzratioQCDcorrSyst_muR"%SRCAT)
+      list_of_parameters.append("%sEWKwzratio_EWK_corr_on_Strong_bin%d"%(SRCAT,b))
    
 
       if (includeStat):
         self.workspace.var("%s_QCDwzratio_stat_bin%d"%(self.cat,b)).setVal(self.r.Gaus(0,1))
         self.workspace.var("%s_EWKwzratio_stat_bin%d"%(self.cat,b)).setVal(self.r.Gaus(0,1))
+	list_of_parameters.append("%s_QCDwzratio_stat_bin%d"%(self.cat,b))
+	list_of_parameters.append("%s_EWKwzratio_stat_bin%d"%(self.cat,b))
 
     
     rwz = self.calcR(b)
@@ -81,7 +98,8 @@ class TFValidator:
 
   mean /=self.ntoys 
   rms = (r2/self.ntoys - mean*mean)**0.5
-    
+  
+
   if includeAll: 
       iter = allpars.createIterator()
       while 1:
@@ -90,7 +108,8 @@ class TFValidator:
        if "QCDZ_SR_bin" in tpar.GetName() : continue
        # not even sure of these 2 but they are constant at least 
        if "TF_syst_fnlo_SF" in tpar.GetName(): continue 
-       if "ewkqcdratio_stat" in tpar.GetName(): continue 
+       if "ewkqcdratio_stat" in tpar.GetName(): continue
+       if "TR_fnlo_SF" in tpar.GetName(): continue
        self.workspace.var(tpar.GetName()).setVal(0)
   else:
     self.workspace.var("%sQCDwzratioQCDcorrSyst_pdf"%SRCAT).setVal(0)
@@ -110,7 +129,7 @@ class TFValidator:
   hist.Draw()
   hist.Fit("gaus")
   c.SaveAs("bin%d.pdf"%b)
-  return rms 
+  return rms, list_of_params
 
 
  def calcRdata(self,b):

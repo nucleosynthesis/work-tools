@@ -1,5 +1,4 @@
 import ROOT 
-import plotRatios 
 import sys
 
 ROOT.gStyle.SetOptStat(0)
@@ -16,25 +15,36 @@ tf.WR = "MUNU"
 """
 
 # inputs are cat ZProc, WProc, ZR, WR, ytitle, ymin, ymax, outname
-tf = plotRatios.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
+if "photon" in sys.argv[3]:
+  import plotRatiosPhotons
+  tf = plotRatiosPhotons.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
+  tf.PProc = sys.argv[3]
+  tf.PR = sys.argv[5]
+else : 
+  import plotRatios 
+  tf = plotRatios.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
+  tf.WProc = sys.argv[3]
+  tf.WR = sys.argv[5]
 
 tf.cat   = sys.argv[1]
 tf.ZProc = sys.argv[2]
-tf.WProc = sys.argv[3]
 tf.ZR = sys.argv[4]
-tf.WR = sys.argv[5]
 
 ytitle = sys.argv[6]
 ymin = sys.argv[7]
 ymax = sys.argv[8]
 out  = sys.argv[9]
 
+year = "2018"
 lstr = "59.7 fb^{-1} (13 TeV, 2018)" 
 if "2017" in tf.cat : 
+ year = "2017"
  if "VTR" in tf.cat : lstr = "36.7 fb^{-1} (13 TeV, 2017)"
  else : lstr = "41.5 fb^{-1} (13 TeV, 2017)"
  #sys.argv[10]#
 clab = sys.argv[10]#
+
+tf.year = year 
 
 fdummy = ROOT.TFile.Open("%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
 hdummy = fdummy.Get("shapes_prefit/%s_SR/qqH_hinv"%sys.argv[1])
@@ -47,6 +57,7 @@ ratae_noexp = hdummy.Clone(); ratae_noexp.SetName("ratio_noexp")
 
 nbins = hdummy.GetNbinsX() 
 
+lists_of_uncertainties = [] 
 for b in range(1,nbins+1):
   de = tf.calcRdata(b)
   data.SetBinContent(b,de[0])
@@ -58,18 +69,21 @@ for b in range(1,nbins+1):
   rata.SetBinError(b,0)
   ratae.SetBinContent(b,rth)
   etot = tf.returnRMS(b,True,True)
+  for uncert in etot[1]: 
+    lists_of_uncertainties.append(uncert)
   #etot=1.
-  ratae.SetBinError(b,etot)
+  ratae.SetBinError(b,etot[0])
 
   ratae_noexp.SetBinContent(b,rth)
-  e_noexp = tf.returnRMS(b,True,False)
+  e_noexp = tf.returnRMS(b,True,False)[0]
   #e_noexp=1.
   ratae_noexp.SetBinError(b,e_noexp)
 
   ratae_nostat.SetBinContent(b,rth)
-  e_nostat = tf.returnRMS(b,False,False)
+  e_nostat = tf.returnRMS(b,False,False)[0]
   ratae_nostat.SetBinError(b,e_nostat)
   print " ... relative uncert = ", e_nostat/rth 
+
 
 data.SetMarkerStyle(20)
 data.SetMarkerSize(1.2)
@@ -113,6 +127,7 @@ ratae.GetYaxis().SetTitle(ytitle)
 ratae.SetMinimum(float(ymin))
 ratae.SetMaximum(float(ymax))
 ratae.GetXaxis().SetNdivisions(010)
+ratae.GetXaxis().SetTitle("M_{jj} (GeV)")
 
 ratae.Draw("E2")
 ratae_noexp.Draw("E2same")
@@ -137,4 +152,7 @@ c.SaveAs("%s.pdf"%out)
 c.SaveAs("%s.png"%out)
 
   
-
+lists_of_uncertainties = list(set(lists_of_uncertainties))
+writeout = open("bands_%s.txt"%out,"w")
+writeout.write("All uncertainties included in RMS...")
+for uncert in lists_of_uncertainties: writeout.write(uncert+"\n")
