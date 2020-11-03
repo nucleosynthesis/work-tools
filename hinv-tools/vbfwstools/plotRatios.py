@@ -128,7 +128,7 @@ class TFValidator:
 
   hist.Draw()
   hist.Fit("gaus")
-  c.SaveAs("bin%d.pdf"%b)
+  #c.SaveAs("bin%d.pdf"%b)
   return rms, list_of_parameters
 
 
