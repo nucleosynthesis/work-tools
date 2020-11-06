@@ -41,3 +41,13 @@ When everything looks ok with the fits/plots etc, **you must add the option** `-
 
 
 Note the naming convention is to just use the input file name with extensions, hopefully it is self explanatory 
+
+# JetHT correlation study 
+
+Also included in the QCD estimate is alternative up/down shapes based on possible correlations between mjj and delta phi. To check this, you can also run the script `data_mc_AB_transfer.py` to make plots from the JetHT data and MC QCD simulation from the A and B regions which shows B/A vs mjj. To run, use something like 
+
+`
+python data_mc_AB_transfer.py out_MTR_2017.root --ymin -0.2 --ymax 1 --label "MTR 2017"
+`
+
+for example in the MTR 2017 category. Change the options for other categories of course.
