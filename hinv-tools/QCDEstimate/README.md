@@ -26,6 +26,8 @@ For running in 2018 of course, just change 2017 to 2018. Instead, for running on
 
 **NOTE** - For the MTR regions, the current version of the analysis uses the option `--function 1`, but it could be good to check the difference this gives to `--function 2` which I think is better motivated. 
 
+**NOTE** - For 2018, we know the MC background in all regions is lower than data by around 15%. You should correct for this by adding the option `--background_scale_factor=0.85` for the 2018 regions. 
+
 # Outputs 
 
 The code (following the above) will output the following 
