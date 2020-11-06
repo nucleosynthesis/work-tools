@@ -35,9 +35,13 @@ The code (following the above) will output the following
   * `out_VTR_2017.root_qcdDD_fakefit.pdf` - this shows the fit in the mindphi variable for the A+B region (low met), which is for the closure. 
   * `out_VTR_2017.root_qcdDD_closureAB.pdf` - this shows the result of the fit to the AB region, and compares with Data-bkg in the Region B 
   * `out_VTR_2017.root_qcdEstimate_toys.pdf` - You can mostly ignore this one, except that in the top left, you see a Result like `N = XXX(1+YY)^theta` - the number `1+YY` is what should go in the datacard as the uncertainty on the normalisation from the fit
-  * `out_VTR_2017.root_qcdDD_closure_ratio.pdf` - just ignore, not sure why I bothered to include that one
-
+  * `out_VTR_2017.root_qcdDD_closure_ratio.pdf` - just ignore, not sure why I bothered to include that one (it might be better to make a dedicated study of it)
+  * `out_MTR_2017.root_qcdDD_fitTransferForShapeSys.pdf` - A fit (pol1) to the normalised shape of data in region B / data in region A vs mjj. Used to determine shape uncertainties for the QCD template. 
+  * `out_MTR_2017.root_mjj_CR.pdf` - The data and non-qcd backgrounds plot in the QCD control region. 
+  
 When everything looks ok with the fits/plots etc, **you must add the option** `--mkworkspace`, which will finally produce the workspace (inside a file called `out_VTR_2017.root_qcdDD.root`), for combine. You **must make sure** that you are using the same version of CMSSW as combine otherwise the workspace in the end won't work - see here for the reccomended versions : http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/#setting-up-the-environment-and-installation 
+
+Note that all of the above plots will also be included in the root file with the workspace inside a folder called `Plots`. 
 
 
 Note the naming convention is to just use the input file name with extensions, hopefully it is self explanatory 
