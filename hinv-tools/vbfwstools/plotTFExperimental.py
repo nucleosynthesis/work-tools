@@ -125,6 +125,8 @@ ratae2017.SetMinimum(float(ymin))
 ratae2017.SetMaximum(float(ymax))
 ratae2017.GetXaxis().SetNdivisions(010)
 
+ratae2017.GetXaxis().SetTitle("M_{jj} (GeV)")
+
 ratae2017.Draw("E2")
 rata2017.Draw("histsame")
 
