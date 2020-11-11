@@ -1044,6 +1044,7 @@ for b in range(1,qcdH.GetNbinsX()+1):
   dijet_M = qcdH.GetBinCenter(b)
   content_b = qcdH.GetBinContent(b)
   ratio_b = transfer_factor_qcd_mc.GetFunction("pol1").Eval(dijet_M)
+  if ratio_b < 1.e-8 : ratio_b = 1.e-8
   qcdH_shape_up.SetBinContent(b,content_b*ratio_b)
   qcdH_shape_dn.SetBinContent(b,content_b*(1./ratio_b))
   qcdH_shape_up.SetBinError(b,0)
@@ -1097,6 +1098,7 @@ copyAndStoreCanvas("%s_qcdDD_fitTransferForShapeSys"%fin.GetName(),cT,pdir)
 ROOT.gStyle.SetOptFit(0)
 ROOT.gStyle.SetOptStat(0)
 
+cF = cD.Clone(); cF.SetName("cF")
 qcdH.Draw("axis")
 qcdClosure.SetLineColor(ROOT.kGreen+2)
 qcdClosure.SetLineWidth(2)
@@ -1129,7 +1131,7 @@ lat.DrawLatex(0.12,0.92,mystring+" Region B")
 legAB.Draw()
 
 #cD.SaveAs("%s_qcdDD_closureAB.pdf"%fin.GetName())
-copyAndStoreCanvas("%s_qcdDD_closureAB"%fin.GetName(),cD,pdir)
+copyAndStoreCanvas("%s_qcdDD_closureAB"%fin.GetName(),cF,pdir)
 
 cR = ROOT.TCanvas("cR","cR",600,320)
 qcdClosure_ratio = qcdClosure.Clone(); qcdClosure_ratio.SetName("closure")
