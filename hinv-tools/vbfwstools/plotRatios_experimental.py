@@ -41,6 +41,7 @@ class TFValidator:
 
   npar = allpars.getSize()
 
+  vetonames = ["QCDZ_SR_bin","TF_syst_fnlo_SF","ewkqcdratio_stat","TR_fnlo_SF","NLOSF_"]
   collactedParams = []  
   for t in range(self.ntoys): 
 
@@ -49,17 +50,23 @@ class TFValidator:
     while 1:
      tpar = iter.Next() # allpars.at(n)
      if tpar == None : break
-
+	
+     # ignore nonsense
+     veto = False
+     for v in vetonames: 
+       if v in tpar.GetName(): 
+       	veto=True 
+      	break
+     if veto: continue 
      # ignore theory uncertainties - also of course, ignore scale factors (float params)
-     # not even sure of the first 2 but they are constant at least 
-     if "TF_syst_fnlo_SF" in tpar.GetName(): continue 
-     if "ewkqcdratio_stat" in tpar.GetName(): continue 
+     # not even sure of the first 2 but they are constant at least
+
      if "QCDwzratioQCDcorrSyst" in tpar.GetName(): continue 
      if "EWKwzratioQCDcorrSyst" in tpar.GetName(): continue 
      if "QCDwzratio_EWK_corr_on_Strong" in tpar.GetName(): continue 
      if "EWKwzratio_EWK_corr_on_Strong_bin" in tpar.GetName(): continue 
      if "QCDwzratio_stat_bin" in tpar.GetName(): continue
-     if "QCDZ_SR_bin" in tpar.GetName() : continue
+     if "EWKwzratio_stat_bin" in tpar.GetName(): continue
      
      if t==0: collactedParams.append(tpar.GetName())
      self.workspace.var(tpar.GetName()).setVal(self.r.Gaus(0,1))
@@ -80,15 +87,19 @@ class TFValidator:
   while 1:
    tpar = iter.Next() # allpars.at(n)
    if tpar == None : break
+   veto = False
+   for v in vetonames: 
+     if v in tpar.GetName(): 
+     	veto=True 
+    	break
+   if veto: continue 
 
-   if "TF_syst_fnlo_SF" in tpar.GetName(): continue 
-   if "ewkqcdratio_stat" in tpar.GetName(): continue 
    if "QCDwzratioQCDcorrSyst" in tpar.GetName(): continue 
    if "EWKwzratioQCDcorrSyst" in tpar.GetName(): continue 
    if "QCDwzratio_EWK_corr_on_Strong" in tpar.GetName(): continue 
    if "EWKwzratio_EWK_corr_on_Strong_bin" in tpar.GetName(): continue 
    if "QCDwzratio_stat_bin" in tpar.GetName(): continue
-   if "QCDZ_SR_bin" in tpar.GetName() : continue 
+   if "EWKwzratio_stat_bin" in tpar.GetName(): continue
    
    self.workspace.var(tpar.GetName()).setVal(0)
 
