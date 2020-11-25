@@ -5,19 +5,20 @@ import sys
 
 ROOT.gStyle.SetOptStat(0)
 ROOT.gROOT.SetBatch(1)
+fillStatCol = ROOT.kRed-10
 
 tf = transferFactorSys.TFSystematics("%s"%(sys.argv[1]))
 # inputs are cat Numerator Proc, Denominator proc, Num Region, Denom Region, ytitle, ymin, ymax, outname
 tf.nbins = int(sys.argv[3])
 tf.cat = sys.argv[2]
 tf.Xvar= "mjj_"+tf.cat
-tf.Numerator  = sys.argv[8]#"WJETS_WMUNU"
-tf.Denominator =sys.argv[9]#  "WJETS_SR"
+tf.Numerator  = sys.argv[6]#"WJETS_WMUNU"
+tf.Denominator =sys.argv[7]#  "WJETS_SR"
 
-ymin = sys.argv[4]
-ymax = sys.argv[5]
-lstr =  sys.argv[6] #"41.5 fb^{-1} (13 TeV, 2017)"
-clab =  sys.argv[7] #"MTR"
+#ymin = sys.argv[4]
+#ymax = sys.argv[5]
+lstr =  sys.argv[4] #"41.5 fb^{-1} (13 TeV, 2017)"
+clab =  sys.argv[5] #"MTR"
 # first draw the central values 
 
 #print """
@@ -33,11 +34,23 @@ clab =  sys.argv[7] #"MTR"
 #clab = %s
 #"""%(tf.nbins,tf.cat,tf.Xvar,tf.Numerator,tf.Denominator,ymin,ymax,lstr,clab)
 
+def getmaxmin(hists):
+  maxi = -9999
+  mini = 9999
+  for h in hists: 
+    histsc = [h.GetBinContent(b) for b in range(1,h.GetNbinsX()+1)]
+    if max(histsc) > maxi : maxi = max(histsc)
+    if min(histsc) < mini : mini = min(histsc)
+
+  print "mini, maxi", mini,maxi
+  return mini*0.99,maxi*1.01 
+
 hcentral = ROOT.TH1F("central",";m_{jj} (GeV);%s / %s;"%(tf.Numerator,tf.Denominator),int(tf.nbins),tf.getBins())
 for b in range(1,(tf.nbins)+1): 
   hcentral.SetBinContent(b,tf.calcR(b))
 
 hcentral.SetMarkerColor(1)
+hcentral.SetMarkerSize(0.8)
 hcentral.SetMarkerStyle(20)
 hcentral.SetLineWidth(2)
 hcentral.SetLineColor(1)
@@ -47,8 +60,8 @@ hcentral.GetYaxis().SetTitleOffset(0.98)
 hcentral.GetXaxis().SetTitleSize(0.06)
 hcentral.GetXaxis().SetLabelSize(0)
 #hcentral.GetYaxis().SetTitle(ytitle)
-hcentral.SetMinimum(float(ymin))
-hcentral.SetMaximum(float(ymax))
+#hcentral.SetMinimum(float(ymin))
+#hcentral.SetMaximum(float(ymax))
 #hcentral.SetMinimum(0.5)
 #hcentral.SetMaximum(1.5)
 hcentral.GetXaxis().SetNdivisions(010)
@@ -56,7 +69,9 @@ hcentral.GetXaxis().SetNdivisions(010)
 leg = ROOT.TLegend(0.76,0.11,0.99,0.92)
 leg.SetBorderSize(0)
 leg.SetTextFont(42)
-leg.AddEntry(hcentral,"Nominal #pm MC. stat","PEL")
+hcentralF = hcentral.Clone()
+hcentralF.SetFillColor(fillStatCol)
+leg.AddEntry(hcentralF,"MC. stat","PELF")
 
 # Now the variations 
 allpars = tf.list_of_parameters()
@@ -104,7 +119,8 @@ while 1:
   down.SetName(tpar.GetName()+"_Down")
   allh.append(up)
   allh.append(down)
-  
+
+
   leg.AddEntry(allh[-1],tpar.GetName(),"L")
   istyle+=1
   icol+=1
@@ -112,7 +128,7 @@ while 1:
 tgStat = ROOT.TGraphAsymmErrors()
 tgStat.SetMarkerStyle(20)
 tgStat.SetMarkerColor(1)
-tgStat.SetMarkerSize(1)
+tgStat.SetMarkerSize(0.5)
 
 tgEWK = ROOT.TGraphAsymmErrors()
 tgEWK.SetMarkerStyle(0)
@@ -122,6 +138,7 @@ tgEWK.SetMarkerColor(0)
 tgEWK.SetMarkerSize(0)
 tgEWK.SetFillColor(ROOT.kOrange)
 
+
 # now we add any stat uncertainties 
 for b in range(1,(tf.nbins)+1):
  erru = 0 
@@ -129,12 +146,13 @@ for b in range(1,(tf.nbins)+1):
  for i,spar in enumerate(allstat): 
    up = tf.gimmeHist(spar,hcentral,1)
    dn = tf.gimmeHist(spar,hcentral,-1)
-   print "bin", b, up.GetName(),  abs(up.GetBinContent(b)-hcentral.GetBinContent(b))
+   #print "bin", b, up.GetName(),  abs(up.GetBinContent(b)-hcentral.GetBinContent(b))
    erru+=(abs(up.GetBinContent(b)-hcentral.GetBinContent(b)))**2
    errd+=(abs(dn.GetBinContent(b)-hcentral.GetBinContent(b)))**2
  hcv = hcentral.GetBinContent(b)
+ bw = hcentral.GetBinWidth(b)
  tgStat.SetPoint(b-1,hcentral.GetBinCenter(b),1)#hcentral.GetBinContent(b))
- tgStat.SetPointError(b-1,0,0,(errd**0.5)/hcv,(erru**0.5)/hcv)
+ tgStat.SetPointError(b-1,bw/8,bw/8,(errd**0.5)/hcv,(erru**0.5)/hcv)
 
 for b in range(1,(tf.nbins)+1):
  erru = 0 
@@ -148,7 +166,7 @@ for b in range(1,(tf.nbins)+1):
  bw = hcentral.GetBinWidth(b)/2
  tgEWK.SetPoint(b-1,hcentral.GetBinCenter(b),1)#hcentral.GetBinContent(b))
  tgEWK.SetPointError(b-1,bw,bw,(errd**0.5)/hcv,(erru**0.5)/hcv)
- print "bin", b, erru
+ #print "bin", b, erru
 
   
 leg.AddEntry(tgEWK,"#pm EWK NLO syst.","F")
@@ -174,6 +192,9 @@ for h in allh: h.Divide(hcentral)
 #tgStat.Divide(hcentral)
 hcentral.Divide(hcentral)
 
+minbin, maxbin = getmaxmin(allh)
+hcentral.SetMinimum(minbin)
+hcentral.SetMaximum(maxbin)
 
 leg.Draw()
 
@@ -227,6 +248,8 @@ haxis.GetYaxis().SetLabelSize(0.1)
 haxis.GetXaxis().SetTitleOffset(0.98)
 haxis.GetXaxis().SetTitleSize(0.18)
 haxis.Draw("axis")
+tgStat.SetFillColor(fillStatCol)
+tgStat.Draw("pe2")
 tgStat.Draw("pe")
 pad2.SetGridy()
 pad2.RedrawAxis()
