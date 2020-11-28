@@ -49,7 +49,7 @@ class TFValidator:
   
   list_of_parameters = []
   
-  vetonames = ["QCDZ_SR_bin","TF_syst_fnlo_SF","ewkqcdratio_stat","TR_fnlo_SF","NLOSF_"]
+  vetonames = ["QCDZ_SR_bin","TF_syst_fnlo_SF","ewkqcdratio_stat","TR_fnlo_SF","NLOSF_","W_SR_freebin"]
 
   for t in range(self.ntoys): 
 
