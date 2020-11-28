@@ -42,7 +42,6 @@ def getmaxmin(hists):
     if max(histsc) > maxi : maxi = max(histsc)
     if min(histsc) < mini : mini = min(histsc)
 
-  print "mini, maxi", mini,maxi
   return mini*0.99,maxi*1.01 
 
 hcentral = ROOT.TH1F("central",";m_{jj} (GeV);%s / %s;"%(tf.Numerator,tf.Denominator),int(tf.nbins),tf.getBins())
@@ -87,6 +86,7 @@ while 1:
   print" found parameter ", tpar.GetName()
   if "ewkqcdratio_stat" in tpar.GetName(): continue 
   if "QCDZ_SR_bin" in tpar.GetName() : continue
+  if "W_SR_freebin" in tpar.GetName() : continue
   if "NLOSF_" in tpar.GetName() : continue
   #if "QCDwzratio_stat_bin" in tpar.GetName(): continue
   
