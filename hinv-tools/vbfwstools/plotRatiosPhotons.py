@@ -50,7 +50,7 @@ class TFValidator:
   SRCAT = "MTR_" if "MTR" in self.cat else "VTR_" 
 
   list_of_parameters = []
-  vetonames = ["wzCR","singleelectron","dielectron","ewkqcdzCR","dimuon","TR_fnlo_SF","pmu_","sfactor_"]
+  vetonames = ["wzCR","singleelectron","dielectron","ewkqcdzCR","dimuon","TR_fnlo_SF","pmu_","sfactor_","W_SR_freebin"]
   for t in range(self.ntoys): 
 
     if includeAll: 

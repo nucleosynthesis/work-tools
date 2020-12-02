@@ -49,6 +49,8 @@ class TFValidator:
   
   list_of_parameters = []
   
+  vetonames = ["QCDZ_SR_bin","TF_syst_fnlo_SF","ewkqcdratio_stat","TR_fnlo_SF","NLOSF_","W_SR_freebin"]
+
   for t in range(self.ntoys): 
 
     if includeAll: 
@@ -56,11 +58,14 @@ class TFValidator:
       while 1:
        tpar = iter.Next() # allpars.at(n)
        if tpar == None : break
-       if "QCDZ_SR_bin" in tpar.GetName() : continue
-       # not even sure of these 2 but they are constant at least 
-       if "TF_syst_fnlo_SF" in tpar.GetName(): continue 
-       if "ewkqcdratio_stat" in tpar.GetName(): continue 
-       if "TR_fnlo_SF" in tpar.GetName(): continue
+       
+       veto = False
+       for v in vetonames: 
+         if v in tpar.GetName(): 
+	 	veto=True 
+		break
+       if veto: continue 
+       
        self.workspace.var(tpar.GetName()).setVal(self.r.Gaus(0,1))
        list_of_parameters.append(tpar.GetName())
 
@@ -105,11 +110,12 @@ class TFValidator:
       while 1:
        tpar = iter.Next() # allpars.at(n)
        if tpar == None : break
-       if "QCDZ_SR_bin" in tpar.GetName() : continue
-       # not even sure of these 2 but they are constant at least 
-       if "TF_syst_fnlo_SF" in tpar.GetName(): continue 
-       if "ewkqcdratio_stat" in tpar.GetName(): continue
-       if "TR_fnlo_SF" in tpar.GetName(): continue
+       veto = False
+       for v in vetonames: 
+         if v in tpar.GetName(): 
+	 	veto=True 
+		break
+       if veto: continue 
        self.workspace.var(tpar.GetName()).setVal(0)
   else:
     self.workspace.var("%sQCDwzratioQCDcorrSyst_pdf"%SRCAT).setVal(0)
