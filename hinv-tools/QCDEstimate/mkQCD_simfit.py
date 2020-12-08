@@ -35,7 +35,8 @@ if len(args) < 1: sys.exit("Error - run with mkQCD.py inputfile.root [options]")
 
 
 import ROOT
-import sys 
+import sys
+from scipy.optimize import minimize
 import array 
 import gc 
 gc.disable()
@@ -69,7 +70,7 @@ CUT = float(options.sr_cut)
 
 
 npar=[0]
-def makeFunction(name, WHICH,  mini,maxi, prestring=""): 
+def makeFunction(name, WHICH, addbkg, mini,maxi, prestring=""): 
    """
    0 => the background MC fit function
    1 => the qcd component with exponential form + flat tail 
@@ -81,18 +82,23 @@ def makeFunction(name, WHICH,  mini,maxi, prestring=""):
      ret = ROOT.TF1(name,"[0]*exp(-[1]*x)*(1+[2]*x+[3]*x*x)",mini,maxi);
 
    elif WHICH==1:
-     ret = ROOT.TF1(name,"%s[0]*exp(-[1]*x)"%prestring,mini,maxi); 
+     if addbkg:
+      ret = ROOT.TF1(name,"[0]*exp(-[1]*x)*(1+[2]*x+[3]*x*x)+[4]*exp(-[5]*x)",mini,maxi); 
+     else: 
+      ret = ROOT.TF1(name,"[0]*exp(-[1]*x)",mini,maxi); 
      npar[0] = 2
 
    elif WHICH==2:
-     ret = ROOT.TF1(name,"%s[0]*exp(-1*(x-[1])*(x-[1])/(2*[2]*[2]))"%prestring,mini,maxi);
-     ret.SetParameter(1,-2.)
-     ret.SetParameter(2,1.)
+     if addbkg:
+       ret = ROOT.TF1(name,"[0]*exp(-[1]*x)*(1+[2]*x+[3]*x*x+[4]*exp(-1*(x-[5])*(x-[5])/(2*[6]*[6]))",mini,maxi);
+       ret.SetParameter(5,-2.)
+       ret.SetParameter(6,1.)
+     else:
+       ret = ROOT.TF1(name,"[0]*exp(-1*(x-[1])*(x-[1])/(2*[2]*[2]))",mini,maxi);
+       ret.SetParameter(1,-2.)
+       ret.SetParameter(2,1.)
      npar[0] = 3
 
-   elif WHICH==3:
-     ret = ROOT.TF1(name,"%s[0]*(1./[1])*(-TMath::Power(x/[2],[1])+TMath::Power((1-x)/[2],[1]))"%prestring,mini,maxi);
-     npar[0] = 3
 
    return ret 
 def makehist(h): 
@@ -200,21 +206,7 @@ def copyAndStoreCanvas(name,can,fi):
   fi.WriteTObject(cans)
   cans.SaveAs("%s.pdf"%name)
 
-def storeInputs(indir,outdir):
-  inputs = indir.GetListOfKeys()
-  for k in inputs:
-    obj = k.ReadObj()
-    nam = k.GetName() 
-    if obj.InheritsFrom(ROOT.TDirectory.Class()): 
-      newdir = outdir.mkdir(obj.GetName())
-      storeInputs(obj,newdir)
-    else: 
-      #print " Writing ", nam, " to ", outdir
-      outdir.WriteTObject(obj,nam)
 # -----------------------------------------------------------------------------------------------
-# 0. save the inputs
-fdirInput = fout.mkdir("Inputs")
-storeInputs(fin,fdirInput)
 # 1. First we are going to make a fit of the min deltaPhi distribution (below MAXFIT)
 fdphi = fin.Get("MetNoLep_CleanJet_mindPhi")#ROOT.TFile.Open(fdphi_name)
 
@@ -247,17 +239,112 @@ total_bkg.SetLineColor(ROOT.kBlue)
 total_bkg.SetMarkerColor(ROOT.kBlue)
 total_bkg.SetMarkerStyle(4)
 total_bkg.SetMarkerSize(0.6)
+
+
+data_c_forChi2 = []
+data_forChi2   = []
+data_e_c_forChi2 = []
+data_e_forChi2   = []
+data_x_forChi2 = []
+
+def chi2_1b(x,d,dd):
+  return ((x-d)/dd)**2
+
+def chi2(v): 
+  d  = data_c_forChi2+data_forChi2
+  dd = data_e_c_forChi2+data_e_forChi2
+  return sum([chi2_1b(vi,di,ddi) for vi,di,ddi in zip(v,d,dd)])
+
+def minimised(params,args):
+  f           = args[0]
+
+  for i,p in enumerate(params):
+    if p<f[0].GetNumberFreeParameters():
+      f[0].SetParameter(i,p)
+    f[1].SetParameter(i,p)
+
+  v = []
+
+  # loop ovr the bins to get values
+  for x in data_x_forChi2:
+    vb = f[0].Eval(x)
+    v.append(vb)
+  
+  # loop ovr the bins to get values
+  for x in data_x_forChi2:
+    vb = f[1].Eval(x)
+    v.append(vb)
+  
+  return 0.5*chi2(v) 
+
+
+def simfit(data,data_c,f,f_c):
+  # by definition data is fit with f_c+f, data_c is fit with f_c
+  init = [ f_c.GetParameter(i) for i in range(f_c.GetNumberFreeParameters()) ] 
+  init.extend([f.GetParameter(i) for i in range(f_c.GetNumberFreeParameters(),f.GetNumberFreeParameters())])
+  
+  del data_x_forChi2[:]
+  del data_forChi2[:]
+  del data_c_forChi2[:]
+  del data_e_forChi2[:]
+  del data_e_c_forChi2[:]
+
+  for b in range(1,data_c.GetNbinsX()+1):
+    x = data_c.GetBinCenter(b)
+    if x < MINFIT: continue 
+    if x > MAXFIT: continue 
+    
+    data_x_forChi2.append(x)
+
+    y = data_c.GetBinContent(b)
+    e = data_c.GetBinError(b)
+    e = (e**2+(e*(BKGSYS-1.))**2)**0.5
+    data_c_forChi2.append(y)
+    data_e_c_forChi2.append(y)
+  
+  for b in range(1,data.GetNbinsX()+1):
+    x = data.GetBinCenter(b)
+    if x < MINFIT: continue 
+    if x > MAXFIT: continue 
+    
+    y = data.GetBinContent(b)
+    e = data.GetBinError(b)
+    data_forChi2.append(y)
+    data_e_forChi2.append(y)
+
+  arg_structure = [[f_c,f]]
+  mle = minimize(minimised,init,args=arg_structure)
+  diage = [(mle.hess_inv[i][i])**0.5 for i in range(len(mle.x))]
+  
+  for i,p in enumerate(mle.x):
+    if p<f_c.GetNumberFreeParameters():
+      f_c.SetParameter(i,p)
+      f_c.SetParError(i,diage[i])
+    f.SetParameter(i,p)
+    f.SetParError(i,diage[i])
+
+
+f_bkg = makeFunction("bkg",0,0,MINFIT,MAXFIT)  # could consider something else like a polynomial added?
+f_bkg.SetParameter(0,total_bkg.GetBinContent(1))
+#bkg_fit_res = total_bkg.Fit("bkg","RNS")
+f_total = makeFunction("total",SELECTFUNC,1,MINFIT,MAXFIT)
+f_total.SetParameter(4,data.GetBinContent(1)-total_bkg.GetBinContent(1))
+#data_fit_res = data.Fit("total","RNS")
+
+simfit(data,total_bkg,f_total,f_bkg)
+
+"""
 f_bkg = makeFunction("bkg",0,MINFIT,MAXFIT)  # could consider something else like a polynomial added?
 f_bkg.SetParameter(0,total_bkg.GetBinContent(1))
 bkg_fit_res = total_bkg.Fit("bkg","RNS")
-
 f_total = makeFunction("total",SELECTFUNC,MINFIT,MAXFIT,"%g*exp(-%g*x)*(1+%g*x+%g*x*x)+"%(f_bkg.GetParameter(0),f_bkg.GetParameter(1),f_bkg.GetParameter(2),f_bkg.GetParameter(3)))
 f_total.SetParameter(4,data.GetBinContent(1)-total_bkg.GetBinContent(1))
 data_fit_res = data.Fit("total","RNS")
-#sys.exit()
-f_qcd = makeFunction("qcd",SELECTFUNC,MINFIT,ROOT.TMath.Pi())
+"""
 
-for i in range(npar[0]): f_qcd.SetParameter(i,f_total.GetParameter(i))
+f_qcd = makeFunction("qcd",SELECTFUNC,0,MINFIT,ROOT.TMath.Pi())
+
+for i in range(npar[0]): f_qcd.SetParameter(i,f_total.GetParameter(i+f_bkg.GetNumberFreeParameters()))
 norm_qcd = f_qcd.Integral(CUT,ROOT.TMath.Pi())/BINWIDTH
 
 # R average 
@@ -290,12 +377,9 @@ def makeToyData(data,sys=0): # can add a normalisation syst too!
   return data_t
 
 # 2. Time to make some toys studies, to get an uncertainty on the integral 
-# nice to plot the fit correlation 
-Tcov   = data_fit_res.GetCovarianceMatrix()
-Tcorr  = data_fit_res.GetCorrelationMatrix()
 # we'll use a boostrap 
-centralvals = [f_qcd.GetParameter(p) for p in range(npar[0])]
-centralerrs = [f_total.GetParError(p) for p in range(npar[0])]
+centralvals = [f_qcd.GetParameter(p)  for p in range(npar[0])]
+centralerrs = [f_total.GetParError(f_bkg.GetNumberFreeParameters()+p) for p in range(npar[0])]
 integralhisto = ROOT.TH1F("h_integral",";Log(N(MJ>%.1f))/N_{0});Entries"%CUT,100,-3,3) #norm_qcd*0.1,norm_qcd*3.0)
 
 rxmin = centralvals[0]-0.05*centralerrs[0]
@@ -320,24 +404,25 @@ for t in range(NTOYS):
   
   # also randomize the background 
   total_bkg_t = makeToyData(total_bkg,BKGSYS)
-  f_bkg_t = makeFunction("bkg_func%d"%(t),0,MINFIT,MAXFIT)
-  total_bkg_t.Fit("bkg_func%d"%(t),"RQ")
+  f_bkg_t = makeFunction("bkg_func%d"%(t),0,0,MINFIT,MAXFIT)
+  #total_bkg_t.Fit("bkg_func%d"%(t),"RQ")
   
-  f_total_toy = makeFunction("total_toy%d"%(t),SELECTFUNC,MINFIT,MAXFIT,"%g*exp(-%g*x)*(1+%g*x+%g*x*x)+"%(f_bkg_t.GetParameter(0),f_bkg_t.GetParameter(1),f_bkg_t.GetParameter(2),f_bkg_t.GetParameter(3)))
-  f_total_toy.SetParameter(0,data_t.GetBinContent(1)-total_bkg_t.GetBinContent(1))
+  f_total_toy = makeFunction("total_toy%d"%(t),SELECTFUNC,1,MINFIT,MAXFIT)
+  f_total_toy.SetParameter(4,data_t.GetBinContent(1)-total_bkg_t.GetBinContent(1))
   
-  data_t.Fit("total_toy%d"%t,"RQ")
+  #data_t.Fit("total_toy%d"%t,"RQ")
+  simfit(data_t,total_bkg_t,f_total_toy,f_bkg_t)
   
-  for i in range(npar[0]): f_qcd.SetParameter(i,f_total_toy.GetParameter(i))
+  for i in range(npar[0]): f_qcd.SetParameter(i,f_total_toy.GetParameter(i+f_bkg_t.GetNumberFreeParameters()))
   norm_qcd_t = f_qcd.Integral(CUT,ROOT.TMath.Pi())/BINWIDTH
   norms.append(ROOT.TMath.Log(norm_qcd_t/norm_qcd)**2)
   for b in range(total_bkg.GetNbinsX()): rms_fqcd[b]+=(f_qcd.Eval(total_bkg.GetBinCenter(b+1))-cen_fqcd[b])**2
   for b in range(total_bkg.GetNbinsX()): rms_fbkg[b]+=(f_bkg_t.Eval(total_bkg.GetBinCenter(b+1))-cen_fbkg[b])**2
   for b in range(total_bkg.GetNbinsX()): rms_ftot[b]+=(f_total_toy.Eval(total_bkg.GetBinCenter(b+1))-cen_ftot[b])**2
-  for p in range(npar[0]): allhistogramspars[p].Fill(f_total_toy.GetParameter(p))
+  for p in range(npar[0]): allhistogramspars[p].Fill(f_total_toy.GetParameter(p+f_bkg_t.GetNumberFreeParameters()))
   integralhisto.Fill(ROOT.TMath.Log(norm_qcd_t/norm_qcd))
 
-
+print " All done with toys! "
 rms = (sum(norms)/len(norms))**0.5
 # reset 
 for p in range(npar[0]): 
@@ -589,6 +674,7 @@ if MINFIT>0:
  lminp4.Draw()
 #c0.SaveAs("%s_qcdDD_normfit.pdf"%fin.GetName())
 copyAndStoreCanvas("%s_qcdDD_normfit"%fin.GetName(),c0,pdir)
+
 # ---------------------------------------------------------------- end of 2
 # 3. Draw the toys (hisogram of the norm and correlation matrix)
 ROOT.gStyle.SetOptStat(origStat)
@@ -647,8 +733,7 @@ latmjj.DrawLatex(0.12,0.92,"%s"%(mystring))
 copyAndStoreCanvas("%s_mjj_CR"%fin.GetName(),cMass,pdir)
 
 
-qcdFromFile = fin.Get("BackgroundSubtractedData_CR"); 
-qcdFromFile_safety = qcdFromFile.Clone(); qcdFromFile_safety.SetName("Safety")
+qcdFromFile = fin.Get("BackgroundSubtractedData_CR")
 integral = qcdFromFile.Integral()
 qcdFromFile.Scale(norm_qcd/integral);
 qcdHoriginal = fixHistogram(qcdFromFile)
@@ -656,23 +741,12 @@ qcdBinned = qcdHoriginal.Clone(); qcdBinned.SetName("rebin_QCD")
 qcdH      = makehist(qcdBinned)
 
 qcdMCFromFile  = fin.Get("QCDMC_SR")
-qcdMCFromFile_safety = qcdMCFromFile.Clone(); qcdMCFromFile_safety.SetName("SafetyMC")
 qcdMCFromFile.Scale(BLINDFACTOR) 
 qcdMCHoriginal = fixHistogram(qcdMCFromFile)
 qcdMCBinned    = qcdMCHoriginal.Clone(); qcdMCBinned.SetName("rebin_QCDMC")
 qcdMCH         = makehist(qcdMCBinned)
 
-
-# use the exact same cuts to compare with for Method A
-# UNCOMMENT NEXT 4 LINES TO USE TIGHTER CUT FOR TRANSFER FACTOR
-#qcdMethodAFromFileR  = qcdMCFromFile_safety.Clone(); qcdMethodAFromFileR.SetName("FinalQCD_SRMC")
-#qcdMethodAFromFileR.Divide(fin.Get("QCDMC_CR"))
-#qcdMethodAFromFile = qcdFromFile_safety.Clone(); qcdMethodAFromFile.SetName("hellno")
-#qcdMethodAFromFile.Multiply(qcdMethodAFromFileR)
-
-# use the relaxed cut version to compare with for Method A
-# COMMENT NEXT  LINE TO USE TIGHTER CUT FOR TRANSFER FACTOR
-qcdMethodAFromFile = fin.Get("FinalQCD_SR")
+qcdMethodAFromFile  = fin.Get("FinalQCD_SR")
 qcdMethodAFromFile.Scale(BLINDFACTOR)
 qcdMethodA = fixHistogram(qcdMethodAFromFile)
 qcdMethodA = makehist(qcdMethodA)
@@ -742,6 +816,7 @@ qcd_dphi_fake.SetMarkerColor(ROOT.kRed)
 qcd_dphi_fake.SetMarkerStyle(4)
 qcd_dphi_fake.SetMarkerSize(0.6)
 
+sys.exit()
 # make the same functions but for the fake data now (in Region A)
 f_bkg_fake = makeFunction("bkg_fake",0,MINFIT,MAXFIT)  # could consider something else like a polynomial added?
 f_bkg_fake.SetParameter(0,background_fake.GetBinContent(1))
