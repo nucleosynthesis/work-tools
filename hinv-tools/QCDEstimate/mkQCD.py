@@ -201,7 +201,21 @@ def copyAndStoreCanvas(name,can,fi):
   cans.SaveAs("%s.pdf"%name)
   cans.SaveAs("%s.png"%name)
 
+def storeInputs(indir,outdir):
+  inputs = indir.GetListOfKeys()
+  for k in inputs:
+    obj = k.ReadObj()
+    nam = k.GetName() 
+    if obj.InheritsFrom(ROOT.TDirectory.Class()): 
+      newdir = outdir.mkdir(obj.GetName())
+      storeInputs(obj,newdir)
+    else: 
+      #print " Writing ", nam, " to ", outdir
+      outdir.WriteTObject(obj,nam)
 # -----------------------------------------------------------------------------------------------
+# 0. save the inputs
+fdirInput = fout.mkdir("Inputs")
+storeInputs(fin,fdirInput)
 # 1. First we are going to make a fit of the min deltaPhi distribution (below MAXFIT)
 fdphi = fin.Get("MetNoLep_CleanJet_mindPhi")#ROOT.TFile.Open(fdphi_name)
 
@@ -637,7 +651,8 @@ latmjj.DrawLatex(0.12,0.92,"%s"%(mystring))
 copyAndStoreCanvas("%s_mjj_CR"%fin.GetName(),cMass,pdir)
 
 
-qcdFromFile = fin.Get("BackgroundSubtractedData_CR")
+qcdFromFile = fin.Get("BackgroundSubtractedData_CR"); 
+qcdFromFile_safety = qcdFromFile.Clone(); qcdFromFile_safety.SetName("Safety")
 integral = qcdFromFile.Integral()
 qcdFromFile.Scale(norm_qcd/integral);
 qcdHoriginal = fixHistogram(qcdFromFile)
@@ -645,12 +660,23 @@ qcdBinned = qcdHoriginal.Clone(); qcdBinned.SetName("rebin_QCD")
 qcdH      = makehist(qcdBinned)
 
 qcdMCFromFile  = fin.Get("QCDMC_SR")
+qcdMCFromFile_safety = qcdMCFromFile.Clone(); qcdMCFromFile_safety.SetName("SafetyMC")
 qcdMCFromFile.Scale(BLINDFACTOR) 
 qcdMCHoriginal = fixHistogram(qcdMCFromFile)
 qcdMCBinned    = qcdMCHoriginal.Clone(); qcdMCBinned.SetName("rebin_QCDMC")
 qcdMCH         = makehist(qcdMCBinned)
 
-qcdMethodAFromFile  = fin.Get("FinalQCD_SR")
+
+# use the exact same cuts to compare with for Method A
+# UNCOMMENT NEXT 4 LINES TO USE TIGHTER CUT FOR TRANSFER FACTOR
+#qcdMethodAFromFileR  = qcdMCFromFile_safety.Clone(); qcdMethodAFromFileR.SetName("FinalQCD_SRMC")
+#qcdMethodAFromFileR.Divide(fin.Get("QCDMC_CR"))
+#qcdMethodAFromFile = qcdFromFile_safety.Clone(); qcdMethodAFromFile.SetName("hellno")
+#qcdMethodAFromFile.Multiply(qcdMethodAFromFileR)
+
+# use the relaxed cut version to compare with for Method A
+# COMMENT NEXT  LINE TO USE TIGHTER CUT FOR TRANSFER FACTOR
+qcdMethodAFromFile = fin.Get("FinalQCD_SR")
 qcdMethodAFromFile.Scale(BLINDFACTOR)
 qcdMethodA = fixHistogram(qcdMethodAFromFile)
 qcdMethodA = makehist(qcdMethodA)
