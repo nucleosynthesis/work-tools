@@ -95,6 +95,14 @@ def makeFunction(name, WHICH,  mini,maxi, prestring=""):
      npar[0] = 3
 
    return ret 
+   
+def rebin(h,bins):
+
+  hbinned = hnew.Clone();  hnew.SetName(hnew.GetName() + "_rebinned")
+  hbinned = hnew.Rebin(len(bins)-1,hnew.GetName() + "_rebinned",array.array('d',bins))
+  return hbinned
+
+
 def makehist(h): 
   hnew = h.Clone(); hnew.SetName("%s_hist"%h.GetName())
   hnew.GetYaxis().SetTitle("Events/GeV")
@@ -622,6 +630,7 @@ cMass = ROOT.TCanvas("cmass","cmass",680,540)
 cMass.cd()
 data_plot = fixHistogram(data_plot)
 background_plot = fixHistogram(background_plot)
+
 data_plot = makehist(data_plot)
 background_plot = makehist(background_plot)
 #data_plot.GetYaxis().SetTitle("Events/GeV")
@@ -650,9 +659,9 @@ latmjj.SetTextFont(42)
 latmjj.DrawLatex(0.12,0.92,"%s"%(mystring))
 copyAndStoreCanvas("%s_mjj_CR"%fin.GetName(),cMass,pdir)
 
-
 qcdFromFile = fin.Get("BackgroundSubtractedData_CR"); 
 qcdFromFile_safety = qcdFromFile.Clone(); qcdFromFile_safety.SetName("Safety")
+
 integral = qcdFromFile.Integral()
 qcdFromFile.Scale(norm_qcd/integral);
 qcdHoriginal = fixHistogram(qcdFromFile)
@@ -666,7 +675,6 @@ qcdMCHoriginal = fixHistogram(qcdMCFromFile)
 qcdMCBinned    = qcdMCHoriginal.Clone(); qcdMCBinned.SetName("rebin_QCDMC")
 qcdMCH         = makehist(qcdMCBinned)
 
-
 # use the exact same cuts to compare with for Method A
 # UNCOMMENT NEXT 4 LINES TO USE TIGHTER CUT FOR TRANSFER FACTOR
 #qcdMethodAFromFileR  = qcdMCFromFile_safety.Clone(); qcdMethodAFromFileR.SetName("FinalQCD_SRMC")
@@ -676,11 +684,11 @@ qcdMCH         = makehist(qcdMCBinned)
 
 # use the relaxed cut version to compare with for Method A
 # COMMENT NEXT  LINE TO USE TIGHTER CUT FOR TRANSFER FACTOR
-qcdMethodAFromFile = fin.Get("FinalQCD_SR")
+
+qcdMethodAFromFile  = fin.Get("FinalQCD_SR")
 qcdMethodAFromFile.Scale(BLINDFACTOR)
 qcdMethodA = fixHistogram(qcdMethodAFromFile)
 qcdMethodA = makehist(qcdMethodA)
-
 qcdH.SetMinimum(ymin)
 qcdH.SetMaximum(ymax)
 qcdH.GetXaxis().SetTitle("m_{jj} (GeV)")
@@ -693,7 +701,6 @@ qcdH.SetMarkerSize(0.8)
 
 qcdMethodA.SetLineColor(ROOT.kMagenta+1)
 qcdMethodA.SetLineWidth(3)
-
 fillH = qcdH.Clone();fillH.SetName("datanormerror")
 for b in range(fillH.GetNbinsX()): 
   fillH.SetBinError(b+1, fillH.GetBinContent(b+1)*rms)
@@ -747,15 +754,14 @@ qcd_dphi_fake.SetMarkerStyle(4)
 qcd_dphi_fake.SetMarkerSize(0.6)
 
 # make the same functions but for the fake data now (in Region A)
+
 f_bkg_fake = makeFunction("bkg_fake",0,MINFIT,MAXFIT)  # could consider something else like a polynomial added?
 f_bkg_fake.SetParameter(0,background_fake.GetBinContent(1))
 bkg_fit_fake_res = background_fake.Fit("bkg_fake","RNS")
-
 f_total_fake = makeFunction("total_fake",SELECTFUNC,MINFIT,MAXFIT,"%g*exp(-%g*x)*(1+%g*x+%g*x*x)+"%(f_bkg_fake.GetParameter(0),f_bkg_fake.GetParameter(1),f_bkg_fake.GetParameter(2),f_bkg_fake.GetParameter(3)))
 f_total_fake.SetParameter(0,data_fake.GetBinContent(1)-background_fake.GetBinContent(1))
 data_fit_res = data_fake.Fit("total_fake","RNS")
 f_qcd_fake = makeFunction("qcd_fake",SELECTFUNC,MINFIT,ROOT.TMath.Pi())
-
 for i in range(npar[0]): f_qcd_fake.SetParameter(i,f_total_fake.GetParameter(i))
 norm_qcd_fake = f_qcd_fake.Integral(CUT,ROOT.TMath.Pi())/BINWIDTH
 
@@ -769,7 +775,6 @@ f_total_fake.SetLineStyle(2)
 f_qcd_fake.SetLineColor(ROOT.kRed)
 f_bkg_fake.SetLineColor(ROOT.kBlue)
 f_total_fake.SetLineColor(1)
-
 
 print " Total closure (fit) -> ", norm_qcd_fake
 norms_fake = []
@@ -1196,6 +1201,14 @@ if not options.mkworkspace:
   fout.Close()
   sys.exit()
 # 6. And finally the histogram for the workspace ! 
+
+rebinned_mjj = [200,400,600,900,1200,1500,2000,2750,5000]
+if "VTR" in mystring:
+  rebinned_mjj = [900,1200,1500,2000,2750,5000]
+
+# qcdH = rebin(qcdH, rebinned_mjj)
+# qcdH_shape_up = rebin(qcdH_shape_up, rebinned_mjj)
+# qcdH_shape_down = rebin(qcdH_shape_down, rebinned_mjj)
 
 # make an original histogram (proper hist)
 qcdCountHisto = makebinned(qcdH)

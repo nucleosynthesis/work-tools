@@ -17,6 +17,8 @@ data_B = fi.Get("BackgroundSubtractedData_B")
 
 qcd_A = fi.Get("QCD_A")
 qcd_B = fi.Get("QCD_B")
+# qcd_A = fi.Get("QCDRELAX_A")
+# qcd_B = fi.Get("QCDRELAX_B")
 
 qcd_B.Divide(qcd_A)
 data_B.Divide(data_A)
@@ -73,7 +75,8 @@ lat.SetTextSize(0.034)
 lat.SetNDC()
 lat.DrawLatex(0.1,0.96,options.label)
 
-canv.SaveAs("test_%s.pdf"%sys.argv[1])
+lat.DrawLatex(0.5,0.96,"100 GeV < MET < 160 GeV + standard selection")
+canv.SaveAs("%s.pdf"%sys.argv[1])
 
 
 #raw_input()
