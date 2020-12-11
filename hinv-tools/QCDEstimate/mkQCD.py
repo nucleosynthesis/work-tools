@@ -272,7 +272,7 @@ norm_qcd = f_qcd.Integral(CUT,ROOT.TMath.Pi())/BINWIDTH
 
 # R average 
 R_average = f_qcd.Integral(CUT,ROOT.TMath.Pi())/f_qcd.Integral(0,CUT)
-print "<R>=N(QCD>%.1f)/N(QCD<%.1f) = "%(CUT,CUT), R_average
+print ("<R>=N(QCD>%.1f)/N(QCD<%.1f) = "%(CUT,CUT), R_average)
 
 f_qcd.SetLineWidth(2)
 f_bkg.SetLineWidth(2)
@@ -504,7 +504,7 @@ ratio_data.GetXaxis().SetLabelSize(0.12)
 ratio_data.GetXaxis().SetTitleSize(0.24)
 ratio_data.GetXaxis().SetTitleOffset(0.8)
 ratio_data.GetXaxis().SetLabelOffset(0.08)
-ratio_data.GetYaxis().SetNdivisions(010)
+ratio_data.GetYaxis().SetNdivisions(0,1,0)
 ratio_data.SetMinimum(0.51)
 ratio_data.SetMaximum(1.49)
 ratio_data.Draw("PEL")
@@ -776,7 +776,7 @@ f_qcd_fake.SetLineColor(ROOT.kRed)
 f_bkg_fake.SetLineColor(ROOT.kBlue)
 f_total_fake.SetLineColor(1)
 
-print " Total closure (fit) -> ", norm_qcd_fake
+print (" Total closure (fit) -> ", norm_qcd_fake)
 norms_fake = []
 centralvals = [f_qcd_fake.GetParameter(p) for p in range(npar[0])]
 rms_fqcd2 = [0. for i in range(background_fake.GetNbinsX())]
@@ -955,7 +955,7 @@ ratio_fake_data.GetXaxis().SetLabelSize(0.12)
 ratio_fake_data.GetXaxis().SetTitleSize(0.24)
 ratio_fake_data.GetXaxis().SetTitleOffset(0.8)
 ratio_fake_data.GetXaxis().SetLabelOffset(0.08)
-ratio_fake_data.GetYaxis().SetNdivisions(010)
+ratio_fake_data.GetYaxis().SetNdivisions(0,1,0)
 ratio_fake_data.SetMinimum(0.51)
 ratio_fake_data.SetMaximum(1.49)
 ratio_fake_data.Draw("PEL")
@@ -1070,8 +1070,10 @@ fillfakeH.SetFillStyle(3001)
 # also make alternative templates for shape variations 
 transfer_factor_qcd_mc   = fin.Get("BackgroundSubtractedData_B")
 transfer_factor_qcd_mc_d = fin.Get("BackgroundSubtractedData_A")
-transfer_factor_qcd_mc.Scale(1./transfer_factor_qcd_mc.Integral())
-transfer_factor_qcd_mc_d.Scale(1./transfer_factor_qcd_mc_d.Integral())
+if ( transfer_factor_qcd_mc.Integral() > 0):
+   transfer_factor_qcd_mc.Scale(1./transfer_factor_qcd_mc.Integral())
+if ( transfer_factor_qcd_mc_d.Integral() > 0):
+   transfer_factor_qcd_mc_d.Scale(1./transfer_factor_qcd_mc_d.Integral())
 transfer_factor_qcd_mc.Divide(transfer_factor_qcd_mc_d)
 
 transfer_factor_qcd_mc.Fit("pol1")
@@ -1080,15 +1082,22 @@ qcdH_shape_dn = qcdH.Clone(); qcdH_shape_dn.SetName("qcd_DD_shapeUncertaintyDown
 for b in range(1,qcdH.GetNbinsX()+1): 
   dijet_M = qcdH.GetBinCenter(b)
   content_b = qcdH.GetBinContent(b)
-  ratio_b = transfer_factor_qcd_mc.GetFunction("pol1").Eval(dijet_M)
-  if ratio_b < 1.e-8 : ratio_b = 1.e-8
-  qcdH_shape_up.SetBinContent(b,content_b*ratio_b)
-  qcdH_shape_dn.SetBinContent(b,content_b*(1./ratio_b))
-  qcdH_shape_up.SetBinError(b,0)
-  qcdH_shape_dn.SetBinError(b,0)
-
-qcdH_shape_up.Scale(qcdH.Integral("width")/qcdH_shape_up.Integral("width"))
-qcdH_shape_dn.Scale(qcdH.Integral("width")/qcdH_shape_dn.Integral("width"))
+  if ( transfer_factor_qcd_mc.Integral() > 0):
+     ratio_b = transfer_factor_qcd_mc.GetFunction("pol1").Eval(dijet_M)
+     if ratio_b < 1.e-8 : ratio_b = 1.e-8
+     qcdH_shape_up.SetBinContent(b,content_b*ratio_b)
+     qcdH_shape_dn.SetBinContent(b,content_b*(1./ratio_b))
+     qcdH_shape_up.SetBinError(b,0)
+     qcdH_shape_dn.SetBinError(b,0)
+  else:
+     qcdH_shape_up.SetBinContent(b,0)
+     qcdH_shape_dn.SetBinContent(b,0)
+     qcdH_shape_up.SetBinError(b,0)
+     qcdH_shape_dn.SetBinError(b,0)
+     
+if ( transfer_factor_qcd_mc.Integral() > 0):
+   qcdH_shape_up.Scale(qcdH.Integral("width")/qcdH_shape_up.Integral("width"))
+   qcdH_shape_dn.Scale(qcdH.Integral("width")/qcdH_shape_dn.Integral("width"))
 
 qcdH_shape_up.SetLineColor(4); qcdH_shape_up.SetLineStyle(2); qcdH_shape_up.SetFillStyle(0)
 qcdH_shape_dn.SetLineColor(4); qcdH_shape_dn.SetLineStyle(2); qcdH_shape_dn.SetFillStyle(0)
@@ -1129,8 +1138,9 @@ ROOT.gStyle.SetOptFit(1111)
 ROOT.gStyle.SetOptStat(1)
 transfer_factor_qcd_mc.GetYaxis().SetTitle("m_{jj} shape in B / m_{jj} shape in A")
 transfer_factor_qcd_mc.Draw("pel")
-transfer_factor_qcd_mc.GetFunction("pol1").SetLineColor(1);
-transfer_factor_qcd_mc.GetFunction("pol1").Draw("same");
+if ( transfer_factor_qcd_mc.Integral() > 0):
+   transfer_factor_qcd_mc.GetFunction("pol1").SetLineColor(1);
+   transfer_factor_qcd_mc.GetFunction("pol1").Draw("same");
 copyAndStoreCanvas("%s_qcdDD_fitTransferForShapeSys"%fin.GetName(),cT,pdir)
 ROOT.gStyle.SetOptFit(0)
 ROOT.gStyle.SetOptStat(0)
@@ -1181,23 +1191,23 @@ qcdClosure_ratio.SetMinimum(0)
 copyAndStoreCanvas("%s_qcdDD_closure_ratio.pdf"%fin.GetName(),cR,pdir)
 
 
-print "Data driven total (in full lumi) = ", qcdH.Integral("width")/BLINDFACTOR, "+/-", rms*norm_qcd/BLINDFACTOR
-print "QCD MC total (in full lumi) = ", qcdMCH.Integral("width")/BLINDFACTOR
+print ("Data driven total (in full lumi) = ", qcdH.Integral("width")/BLINDFACTOR, "+/-", rms*norm_qcd/BLINDFACTOR)
+print ("QCD MC total (in full lumi) = ", qcdMCH.Integral("width")/BLINDFACTOR)
 bins = " | ".join(["%.4d-%.4d"%((qcdH.GetBinLowEdge(b)),(qcdH.GetBinLowEdge(b+1))) for b in range(1,qcdH.GetNbinsX()+1)])
-print "Bin |",bins
+print ("Bin |",bins)
 vals = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdH.GetBinContent(b)*qcdH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "N   |",vals
+print ("N   |",vals)
 errs = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdH.GetBinError(b)*qcdH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "Err |",errs
+print ("Err |",errs)
 mcY  = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdMCH.GetBinContent(b)*qcdMCH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "MC  |",mcY
+print ("MC  |",mcY)
 mcYE  = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdMCH.GetBinError(b)*qcdMCH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "Err |",mcYE
+print ("Err |",mcYE)
 mcYC = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdClosure.GetBinContent(b)*qcdClosure.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "clo.|",mcYC
+print ("clo.|",mcYC)
 # --------------------------------------------------------------- end of 5.
 if not options.mkworkspace: 
-  print "Plots stored in ", fout.GetName()
+  print ("Plots stored in ", fout.GetName())
   fout.Close()
   sys.exit()
 # 6. And finally the histogram for the workspace ! 
@@ -1232,7 +1242,7 @@ getattr(wspace,"import")(qcd_dh_nominal)
 getattr(wspace,"import")(qcd_dh_up)     
 getattr(wspace,"import")(qcd_dh_down)   
 fout.WriteTObject(wspace)
-print "Plots and workspace stored in ", fout.GetName()
+print ("Plots and workspace stored in ", fout.GetName())
 
 wspace.Delete()
 # --------------------------------------------------------------- end of 6.
