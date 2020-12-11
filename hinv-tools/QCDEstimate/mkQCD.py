@@ -44,6 +44,7 @@ R = ROOT.TRandom3()
 origStat = ROOT.gStyle.GetOptStat()
 ROOT.gStyle.SetOptStat(0)
 ROOT.gROOT.SetBatch(1)
+ROOT.gROOT.ForceStyle(0)
 
 
 fin = ROOT.TFile.Open(args[0])
