@@ -815,7 +815,11 @@ for t in range(NTOYS):
   for b in range(background_fake_t.GetNbinsX()): 
     rms_fbkg2[b]+=(f_bkg_t.Eval(background_fake.GetBinCenter(b+1))-cen_fbkg2[b])**2
 
-rms_fake = (sum(norms_fake)/len(norms_fake))**0.5
+if ( len(norms_fake) > 0 ):
+   rms_fake = (sum(norms_fake)/len(norms_fake))**0.5
+else:
+   rms_fake = 0
+
 # reset 
 for p in range(npar[0]): 
   f_qcd_fake.SetParameter(p,centralvals[p])
@@ -1227,8 +1231,13 @@ qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
 fout.WriteTObject(qcdCountHisto)
 
 # and shape uncertainties 
-qcdCountH_shape_up = makebinned(qcdH_shape_up); qcdCountH_shape_up.Scale((norm_qcd/BLINDFACTOR)/qcdCountH_shape_up.Integral())
-qcdCountH_shape_dn = makebinned(qcdH_shape_dn); qcdCountH_shape_dn.Scale((norm_qcd/BLINDFACTOR)/qcdCountH_shape_dn.Integral())
+
+qcdCountH_shape_up = makebinned(qcdH_shape_up); 
+if ( qcdCountH_shape_up.Integral() > 0 ):
+   qcdCountH_shape_up.Scale((norm_qcd/BLINDFACTOR)/qcdCountH_shape_up.Integral())
+qcdCountH_shape_dn = makebinned(qcdH_shape_dn);
+if ( qcdCountH_shape_dn.Integral() > 0 ):
+   qcdCountH_shape_dn.Scale((norm_qcd/BLINDFACTOR)/qcdCountH_shape_dn.Integral())
 
 #sys.exit()
 #fout.cd()
