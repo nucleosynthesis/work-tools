@@ -148,7 +148,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	data_r.GetXaxis().SetLabelSize(0.08)
 	data_r.GetYaxis().SetTitleSize(0.08)
 	data_r.GetYaxis().SetLabelSize(0.08)
-	data_r.GetYaxis().SetTitle("Data/Prediction")
+	data_r.GetYaxis().SetTitle("Data - bkg/Prediction")
 
 	data_r.Draw("PEL")
 	ratae_r.Draw("E2same")
