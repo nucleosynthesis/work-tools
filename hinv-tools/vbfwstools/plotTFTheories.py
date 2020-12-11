@@ -15,6 +15,10 @@ tf.ZR = "MUMU"
 tf.WR = "MUNU"
 """
 
+def Ratio(a,b):
+  ret = a.Clone(); ret.SetName(a.GetName()+"_"+b.GetName())
+  ret.Divide(b)
+  return ret
 
 def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab): 
 	fdummy = ROOT.TFile.Open("%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
@@ -71,10 +75,8 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	rata.SetLineWidth(3)
 
 	c = ROOT.TCanvas("c","c",960,640)
-	c.SetBottomMargin(0.15)
-	c.SetRightMargin(0.25)
-	c.SetLeftMargin(0.11)
 
+	
 	lat = ROOT.TLegend(0.76,0.62,0.99,0.89)
 	lat.SetBorderSize(0)
 	lat.SetTextFont(42)
@@ -83,12 +85,32 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	lat.AddEntry(ratae_nostat, "#pm Th. uncert.","F")
 	lat.AddEntry(ratae_noexp,"#pm MC stat. uncert.","F")
 	lat.AddEntry(ratae, "#pm expt.","F")
+	
+	pad1 = ROOT.TPad("pad1","pad1",0,0.32,1,0.9)
+	pad2 = ROOT.TPad("pad2","pad2",0,0,1,0.31)
+	pad1.Draw()
+	pad1.SetBottomMargin(0.05)
+	pad1.SetTicky()
+	pad1.SetTickx()
+	
+	pad1.SetRightMargin(0.25)
+	pad1.SetLeftMargin(0.11)
+	pad1.SetTopMargin(0.02)
+	pad1.SetBottomMargin(0.02)
+
+	pad2.SetRightMargin(0.25)
+	pad2.SetLeftMargin(0.11)
+	pad2.SetTopMargin(0.02)
+	pad2.SetBottomMargin(0.32)
+
+	pad1.cd()
 
 	ratae.SetTitle("")
+	ratae.GetXaxis().SetNdivisions(510)
 	ratae.GetYaxis().SetTitleSize(0.06)
-	ratae.GetYaxis().SetTitleOffset(0.9)
-	ratae.GetXaxis().SetTitleSize(0.06)
-
+	ratae.GetYaxis().SetTitleOffset(0.7)
+	ratae.GetXaxis().SetTitleSize(0.0)
+	ratae.GetXaxis().SetLabelSize(0.0)
 
 	ratae.SetFillColor(ROOT.kGray+2)
 	ratae_noexp.SetFillColor(ROOT.kGray+1)
@@ -105,8 +127,41 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	ratae_nostat.Draw("E2same")
 	rata.Draw("histsame")
 	data.Draw("PELsame")
-	lat.Draw()
 
+	pad1.RedrawAxis()
+
+	c.cd()
+	pad2.Draw()
+        pad2.cd()
+
+	ratae_r = Ratio(ratae,rata)
+	ratae_noexp_r  = Ratio(ratae_noexp,rata)
+	ratae_nostat_r = Ratio(ratae_nostat,rata)
+	data_r  = Ratio(data,rata)
+	rata_r  = Ratio(rata,rata)
+
+	data_r.SetTitle("")
+	data_r.GetXaxis().SetNdivisions(510)
+	data_r.GetXaxis().SetTitleSize(0.12)
+	data_r.GetXaxis().SetTitleOffset(1.1)
+	data_r.GetYaxis().SetTitleOffset(0.5)
+	data_r.GetXaxis().SetLabelSize(0.08)
+	data_r.GetYaxis().SetTitleSize(0.08)
+	data_r.GetYaxis().SetLabelSize(0.08)
+	data_r.GetYaxis().SetTitle("Data/Prediction")
+
+	data_r.Draw("PEL")
+	ratae_r.Draw("E2same")
+	ratae_noexp_r.Draw("E2same")
+	ratae_nostat_r.Draw("E2same")
+	rata_r.Draw("histsame")
+	data_r.Draw("PELsame")
+
+	pad2.SetTicky()
+	pad2.RedrawAxis()
+
+	c.cd()
+	lat.Draw()
 	tlat = ROOT.TLatex()
 	tlat.SetTextFont(42)
 	tlat.SetNDC()
@@ -116,9 +171,9 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	tlat.SetTextSize(0.04)
 	tlat.DrawLatex(0.14,0.83,clab)
 
-	c.SetTicky()
-	c.SetTickx()
 	c.RedrawAxis()
+
+
 	c.SaveAs("%s.pdf"%out)
 	c.SaveAs("%s.png"%out)
 
