@@ -14,6 +14,17 @@ tf.WProc = "munu"
 tf.ZR = "MUMU"
 tf.WR = "MUNU"
 """
+def RatioD(a,b):
+  ret = a.Clone(); ret.SetName(a.GetName()+"_"+b.GetName())
+  for i in range(b.GetNbinsX()): 
+    v = a.GetY()[i]
+    vel = a.GetErrorYlow(i)
+    veu = a.GetErrorYhigh(i)
+    u = b.GetBinContent(i+1)
+
+    ret.SetPoint(i,a.GetX()[i],v/u)
+    ret.SetPointError(i,0,0,vel/u,veu/u)
+  return ret
 
 def Ratio(a,b):
   ret = a.Clone(); ret.SetName(a.GetName()+"_"+b.GetName())
@@ -23,8 +34,9 @@ def Ratio(a,b):
 def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab): 
 	fdummy = ROOT.TFile.Open("%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
 	hdummy = fdummy.Get("shapes_prefit/%s_SR/qqH_hinv"%sys.argv[1])
+	ddummy = fdummy.Get("shapes_prefit/%s_SR/data"%sys.argv[1])
 
-	data = hdummy.Clone(); data.SetName("data")
+	data  = ddummy.Clone(); data.SetName("data")
 	rata  = hdummy.Clone(); rata.SetName("ratio")
 	ratae = hdummy.Clone(); ratae.SetName("ratio")
 	ratae_nostat = hdummy.Clone(); ratae_nostat.SetName("ratio_nostat")
@@ -35,11 +47,12 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	lists_of_uncertainties = [] 
 	for b in range(1,nbins+1):
 	  de = tf.calcRdata(b)
-	  data.SetBinContent(b,de[0])
-	  data.SetBinError(b,de[1])
+	  data.SetPoint(b-1,ddummy.GetX()[b-1],de[0])
+	  data.SetPointError(b-1,0,0,de[1],de[2])
 
 	  rth = tf.calcR(b)
-	  print "bin %d"%b,"ratio_th=", rth, "data-bkg rat=", de[0],"+/-",de[1],
+	  print "bin %d"%b,"ratio_th=", rth, "data-bkg rat=", de[0],"-",de[1], "+", de[2]
+	  print "check ", data.GetErrorYlow(b-1),data.GetErrorYhigh(b-1) 
 	  rata.SetBinContent(b,rth)
 	  rata.SetBinError(b,0)
 	  ratae.SetBinContent(b,rth)
@@ -80,7 +93,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	lat = ROOT.TLegend(0.76,0.62,0.99,0.89)
 	lat.SetBorderSize(0)
 	lat.SetTextFont(42)
-	lat.AddEntry(data,"Data - bkg","PEL")
+	lat.AddEntry(data,"Data - bkg","PE")
 	lat.AddEntry(rata,"Prediction","L")
 	lat.AddEntry(ratae_nostat, "#pm Th. uncert.","F")
 	lat.AddEntry(ratae_noexp,"#pm MC stat. uncert.","F")
@@ -106,7 +119,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	pad1.cd()
 
 	ratae.SetTitle("")
-	ratae.GetXaxis().SetNdivisions(510)
+	ratae.GetYaxis().SetNdivisions(510)
 	ratae.GetYaxis().SetTitleSize(0.06)
 	ratae.GetYaxis().SetTitleOffset(0.7)
 	ratae.GetXaxis().SetTitleSize(0.0)
@@ -119,14 +132,14 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	ratae.GetYaxis().SetTitle(ytitle)
 	ratae.SetMinimum(float(ymin))
 	ratae.SetMaximum(float(ymax))
-	ratae.GetXaxis().SetNdivisions(010)
+	#ratae.GetXaxis().SetNdivisions(010)
 	ratae.GetXaxis().SetTitle("M_{jj} (GeV)")
 
 	ratae.Draw("E2")
 	ratae_noexp.Draw("E2same")
 	ratae_nostat.Draw("E2same")
 	rata.Draw("histsame")
-	data.Draw("PELsame")
+	data.Draw("PE0same")
 
 	pad1.RedrawAxis()
 
@@ -137,25 +150,29 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	ratae_r = Ratio(ratae,rata)
 	ratae_noexp_r  = Ratio(ratae_noexp,rata)
 	ratae_nostat_r = Ratio(ratae_nostat,rata)
-	data_r  = Ratio(data,rata)
+	data_r  = RatioD(data,rata)
 	rata_r  = Ratio(rata,rata)
 
-	data_r.SetTitle("")
-	data_r.GetXaxis().SetNdivisions(510)
-	data_r.GetXaxis().SetTitleSize(0.12)
-	data_r.GetXaxis().SetTitleOffset(1.1)
-	data_r.GetYaxis().SetTitleOffset(0.5)
-	data_r.GetXaxis().SetLabelSize(0.08)
-	data_r.GetYaxis().SetTitleSize(0.08)
-	data_r.GetYaxis().SetLabelSize(0.08)
-	data_r.GetYaxis().SetTitle("Data - bkg/Prediction")
-
-	data_r.Draw("PEL")
+	rata_r.SetTitle("")
+	rata_r.GetYaxis().SetNdivisions(010)
+	rata_r.GetXaxis().SetRangeUser(rata_r.GetXaxis().GetXmin(),rata_r.GetXaxis().GetXmax())
+	rata_r.GetXaxis().SetTitleSize(0.12)
+	rata_r.GetXaxis().SetTitleOffset(1.1)
+	rata_r.GetYaxis().SetTitleOffset(0.5)
+	rata_r.GetXaxis().SetLabelSize(0.08)
+	rata_r.GetYaxis().SetTitleSize(0.08)
+	rata_r.GetYaxis().SetLabelSize(0.08)
+	rata_r.GetYaxis().SetTitle("Data - bkg/Prediction")
+	rata_r.SetMaximum(data_r.GetYaxis().GetXmax())
+	rata_r.SetMinimum(data_r.GetYaxis().GetXmin())
+	
+	rata_r.Draw("AXIS")
+	data_r.Draw("PE")
 	ratae_r.Draw("E2same")
 	ratae_noexp_r.Draw("E2same")
 	ratae_nostat_r.Draw("E2same")
 	rata_r.Draw("histsame")
-	data_r.Draw("PELsame")
+	data_r.Draw("PEsame")
 
 	pad2.SetTicky()
 	pad2.RedrawAxis()
