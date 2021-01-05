@@ -201,13 +201,32 @@ name_of_function = hcentral.GetYaxis().GetTitle()
 
 c.cd()
 
+
 hcentral_C = hcentral.Clone()
+
+gr_centralE = ROOT.TGraphAsymmErrors()
+for ix in range(hcentral_C.GetNbinsX()):
+  cx = hcentral_C.GetBinCenter(ix+1)
+  cy = hcentral_C.GetBinContent(ix+1)
+  gr_centralE.SetPoint(ix,cx,cy)
+  gr_centralE.SetPointError(ix,tgStat.GetErrorXlow(ix),tgStat.GetErrorXhigh(ix),tgStat.GetErrorYlow(ix)*cy,tgStat.GetErrorYhigh(ix)*cy)
+
+
+gr_centralE.SetFillColor(fillStatCol)
+
+
 pad0.cd()
 hcentral_C.GetYaxis().SetTitle("nominal")
 hcentral_C.GetYaxis().SetLabelSize(0.09)
 hcentral_C.GetYaxis().SetTitleSize(0.1)
 hcentral_C.GetYaxis().SetTitleOffset(0.3)
-hcentral_C.Draw("Phist")
+gr_centralE.GetYaxis().SetTitle("nominal")
+gr_centralE.GetYaxis().SetLabelSize(0.09)
+gr_centralE.GetYaxis().SetTitleSize(0.1)
+gr_centralE.GetYaxis().SetTitleOffset(0.3)
+gr_centralE.Draw("APe2")
+gr_centralE.Draw("Pe")
+hcentral_C.Draw("Phistsame")
 pad0.SetGridy()
 pad2.SetGridy()
 c.cd()
