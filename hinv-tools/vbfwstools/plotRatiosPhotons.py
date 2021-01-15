@@ -146,11 +146,13 @@ class TFValidator:
   print "shapes_prefit/%s_Z%s/data"%(self.cat,self.ZR)
   data_Z = self.fit_file.Get("shapes_prefit/%s_Z%s/data"%(self.cat,self.ZR))
   Zd     = data_Z.GetY()[b-1]
-  Ze     = 0.5*(data_Z.GetErrorYhigh(b-1)+data_Z.GetErrorYlow(b-1))
+  Zeu     = data_Z.GetErrorYhigh(b-1)
+  Zed     = data_Z.GetErrorYlow(b-1)
   
   data_P = self.fit_file.Get("shapes_prefit/photon_cr_%s/data"%(self.year))
   Pd     = data_P.GetY()[b-1]
-  Pe     = 0.5*(data_P.GetErrorYhigh(b-1)+data_P.GetErrorYlow(b-1))
+  Peu     = data_P.GetErrorYhigh(b-1)
+  Ped     = data_P.GetErrorYlow(b-1)
 
   # Remove the backgrounds!
   TT_Z  = self.fit_file.Get("shapes_prefit/%s_Z%s/TOP"%(self.cat,self.ZR))
@@ -166,9 +168,10 @@ class TFValidator:
   Zd -= (ttZ_d+VVZ_d)
   
   rpz = Pd/Zd
-  rpz_e = rpz * ( ( (Ze/Zd)**2 + (Pe/Pd)**2)**0.5 )
+  rpz_eu = abs(rpz) * ( ( (Zeu/Zd)**2 + (Peu/Pd)**2)**0.5 )
+  rpz_ed = abs(rpz) * ( ( (Zed/Zd)**2 + (Ped/Pd)**2)**0.5 )
 
-  return rpz, rpz_e
+  return rpz, rpz_ed, rpz_eu
 
  
  

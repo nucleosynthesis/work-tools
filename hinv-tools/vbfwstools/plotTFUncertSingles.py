@@ -171,26 +171,83 @@ for b in range(1,(tf.nbins)+1):
   
 leg.AddEntry(tgEWK,"#pm EWK NLO syst.","F")
 
-c = ROOT.TCanvas("c","c",960,640)
+c = ROOT.TCanvas("c","c",960,720)
 #c.SetBottomMargin(0.15)
 #c.SetRightMargin(0.25)
-pad2 = ROOT.TPad("p1","p1",0.0,0.0,1,0.25)
-pad1 = ROOT.TPad("p2","p2",0.0,0.25,1,0.95)
+pad2 = ROOT.TPad("p2","p2",0.0,0.00,1,0.25)
+pad1 = ROOT.TPad("p1","p1",0.0,0.25,1,0.75)
+pad0 = ROOT.TPad("p0","p0",0.0,0.75,1,0.94)
+
 pad1.SetBottomMargin(0.014)
-pad1.SetTopMargin(0.05)
-pad2.SetTopMargin(0.035)
+pad0.SetBottomMargin(0.014)
 pad2.SetBottomMargin(0.4)
+
+pad0.SetTopMargin(0.08)
+pad1.SetTopMargin(0.035)
+pad2.SetTopMargin(0.035)
+
+pad0.SetLeftMargin(0.1)
 pad1.SetLeftMargin(0.1)
 pad2.SetLeftMargin(0.1)
+pad0.SetRightMargin(0.25)
 pad1.SetRightMargin(0.25)
 pad2.SetRightMargin(0.25)
+
+pad0.Draw()
 pad1.Draw()
 pad2.Draw()
 
+name_of_function = hcentral.GetYaxis().GetTitle()
+
 c.cd()
+
+
+hcentral_C = hcentral.Clone()
+
+gr_centralE = ROOT.TGraphAsymmErrors()
+for ix in range(hcentral_C.GetNbinsX()):
+  cx = hcentral_C.GetBinCenter(ix+1)
+  cy = hcentral_C.GetBinContent(ix+1)
+  gr_centralE.SetPoint(ix,cx,cy)
+  gr_centralE.SetPointError(ix,tgStat.GetErrorXlow(ix),tgStat.GetErrorXhigh(ix),tgStat.GetErrorYlow(ix)*cy,tgStat.GetErrorYhigh(ix)*cy)
+
+
+gr_centralE.SetFillColor(fillStatCol)
+
+
+pad0.cd()
+hcentral_C.GetYaxis().SetTitle("nominal")
+hcentral_C.GetYaxis().SetLabelSize(0.09)
+hcentral_C.GetYaxis().SetTitleSize(0.1)
+hcentral_C.GetYaxis().SetTitleOffset(0.3)
+hcentral_C.SetMarkerSize(0.6)
+gr_centralE.GetYaxis().SetTitle("nominal")
+gr_centralE.GetYaxis().SetLabelSize(0.09)
+gr_centralE.GetYaxis().SetTitleSize(0.1)
+gr_centralE.GetYaxis().SetTitleOffset(0.3)
+
+haxist = ROOT.TH1F("haxis","",int(tf.nbins),tf.getBins())
+haxist.SetMaximum(gr_centralE.GetYaxis().GetXmax())
+haxist.SetMinimum(gr_centralE.GetYaxis().GetXmin())
+haxist.GetXaxis().SetRangeUser(hcentral.GetXaxis().GetXmin(),hcentral.GetXaxis().GetXmax())
+haxist.GetYaxis().SetTitle("nominal")
+haxist.GetYaxis().SetLabelSize(0.09)
+haxist.GetYaxis().SetTitleSize(0.1)
+haxist.GetYaxis().SetTitleOffset(0.3)
+haxist.GetXaxis().SetLabelSize(0)
+haxist.Draw("axis")
+
+gr_centralE.Draw("Pe2")
+gr_centralE.Draw("Pe")
+hcentral_C.Draw("Phistsame")
+pad0.SetGridy()
+pad2.SetGridy()
+c.cd()
+
 for h in allh: h.Divide(hcentral)
 #tgStat.Divide(hcentral)
 hcentral.Divide(hcentral)
+hcentral.GetYaxis().SetTitle("sys/nominal")
 
 minbin, maxbin = getmaxmin(allh)
 hcentral.SetMinimum(minbin)
@@ -201,18 +258,17 @@ leg.Draw()
 tlat = ROOT.TLatex()
 tlat.SetTextFont(42)
 tlat.SetNDC()
+tlat.SetTextSize(0.04)
 tlat.DrawLatex(0.11,0.94,"#bf{CMS} #it{Preliminary}")
 tlat.DrawLatex(0.44,0.94,lstr)
 tlat.SetTextSize(0.04)
-tlat.DrawLatex(0.14,0.86,clab)
+tlat.DrawLatex(0.86,0.94,clab)
 
 c.SetTicky()
 c.SetTickx()
 c.SetGridy()
 #c.SetGridx()
 lines = []
-tlat.SetTextSize(0.02)
-tlat.SetNDC(False)
 
 pad1.cd()
 hcentral.Draw("histP")
@@ -244,7 +300,7 @@ haxis.GetYaxis().SetLabelSize(0.03)
 haxis.GetYaxis().SetNdivisions(010)
 haxis.GetXaxis().SetLabelSize(0.15)
 haxis.GetXaxis().SetTitle(hcentral.GetXaxis().GetTitle())
-haxis.GetYaxis().SetLabelSize(0.1)
+haxis.GetYaxis().SetLabelSize(0.08)
 haxis.GetXaxis().SetTitleOffset(0.98)
 haxis.GetXaxis().SetTitleSize(0.18)
 haxis.Draw("axis")
@@ -256,6 +312,11 @@ pad2.RedrawAxis()
 
 c.cd()
 c.RedrawAxis()
+
+tlat.SetTextSize(0.034)
+tlat.SetTextAngle(90)
+tlat.DrawLatex(0.023,0.1,name_of_function)
+
 c.SaveAs("single_tf_uncert_VBF_%s_%s_%s.pdf"%(tf.cat,tf.Numerator,tf.Denominator))
 c.SaveAs("single_tf_uncert_VBF_%s_%s_%s.png"%(tf.cat,tf.Numerator,tf.Denominator))
 
