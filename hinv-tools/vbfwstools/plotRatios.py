@@ -143,11 +143,13 @@ class TFValidator:
   print "shapes_prefit/%s_Z%s/data"%(self.cat,self.ZR)
   data_Z = self.fit_file.Get("shapes_prefit/%s_Z%s/data"%(self.cat,self.ZR))
   Zd     = data_Z.GetY()[b-1]
-  Ze     = 0.5*(data_Z.GetErrorYhigh(b-1)+data_Z.GetErrorYlow(b-1))
+  Zeu     = data_Z.GetErrorYhigh(b-1)
+  Zed     = data_Z.GetErrorYlow(b-1)
   
   data_W = self.fit_file.Get("shapes_prefit/%s_W%s/data"%(self.cat,self.WR))
   Wd     = data_W.GetY()[b-1]
-  We     = 0.5*(data_W.GetErrorYhigh(b-1)+data_W.GetErrorYlow(b-1))
+  Weu     = data_W.GetErrorYhigh(b-1)
+  Wed     = data_W.GetErrorYlow(b-1)
 
   # Remove the backgrounds!
   TT_Z  = self.fit_file.Get("shapes_prefit/%s_Z%s/TOP"%(self.cat,self.ZR))
@@ -169,9 +171,10 @@ class TFValidator:
   Zd -= (ttZ_d+VVZ_d)
   
   rwz = Zd/Wd
-  rwz_e = rwz * ( ( (Ze/Zd)**2 + (We/Wd)**2)**0.5 )
+  rwz_eu = abs(rwz) * ( ( (Zeu/Zd)**2 + (Weu/Wd)**2)**0.5 )
+  rwz_ed = abs(rwz) * ( ( (Zed/Zd)**2 + (Wed/Wd)**2)**0.5 )
 
-  return rwz, rwz_e
+  return rwz, rwz_ed, rwz_eu
 
  
  
