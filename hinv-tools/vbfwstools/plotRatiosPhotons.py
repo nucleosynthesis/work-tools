@@ -47,7 +47,14 @@ class TFValidator:
   c = ROOT.TCanvas()
   rwzcental = self.calcR(b)
   hist = ROOT.TH1F("histo","",50,0.75*rwzcental,1.25*rwzcental)
-  SRCAT = "MTR_" if "MTR" in self.cat else "VTR_" 
+  
+  SRCAT = "" 
+  if   "MTR" in self.cat SRCAT  = "MTR_"
+  elif "VTR" in self.cat SRCAT  = "VTR_" 
+  elif "MTRC" in self.cat SRCAT = "MTRC_" 
+  elif "VTRC" in self.cat SRCAT = "VTRC_" 
+  elif "MTRF" in self.cat SRCAT = "MTRF_" 
+  elif "VTRF" in self.cat SRCAT = "VTRF_" 
 
   list_of_parameters = []
   vetonames = ["wzCR","singleelectron","dielectron","ewkqcdzCR","dimuon","TR_fnlo_SF","pmu_","sfactor_","W_SR_freebin"]
