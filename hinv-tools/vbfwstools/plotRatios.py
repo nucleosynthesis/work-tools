@@ -46,17 +46,20 @@ class TFValidator:
   rwzcental = self.calcR(b)
   hist = ROOT.TH1F("histo","",50,0.75*rwzcental,1.25*rwzcental)
   SRCAT = "" 
-  if   "MTR" in self.cat  :SRCAT  = "MTR_"
-  elif "VTR" in self.cat  :SRCAT  = "VTR_" 
-  elif "MTRC" in self.cat :SRCAT = "MTRC_" 
+  if   "MTRC" in self.cat :SRCAT = "MTRC_" 
   elif "VTRC" in self.cat :SRCAT = "VTRC_" 
   elif "MTRF" in self.cat :SRCAT = "MTRF_" 
   elif "VTRF" in self.cat :SRCAT = "VTRF_" 
+  elif "MTR" in self.cat  :SRCAT  = "MTR_"
+  elif "VTR" in self.cat  :SRCAT  = "VTR_" 
   
   list_of_parameters = []
   
   vetonames = ["QCDZ_SR_bin","TF_syst_fnlo_SF","ewkqcdratio_stat","TR_fnlo_SF","NLOSF_","W_SR_freebin"]
 
+  print " here are the things ", 
+  print SRCAT
+  print self.cat 
   for t in range(self.ntoys): 
 
     if includeAll: 
