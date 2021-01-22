@@ -31,6 +31,17 @@ def Ratio(a,b):
   ret.Divide(b)
   return ret
 
+def average(x,y):
+ return (abs(x)+abs(y))/2
+
+def getAveragePull(gr):
+  	Npoints = gr.GetN()-1
+	rms  = 0 
+	mean = 0
+	for p in range(Npoints): 
+	  mean += (average(gr.GetErrorYhigh(p),gr.GetErrorYlow(p)))
+	return mean/Npoints
+
 def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab): 
 	fdummy = ROOT.TFile.Open("%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
 	hdummy = fdummy.Get("shapes_prefit/%s_SR/qqH_hinv"%sys.argv[1])
@@ -153,6 +164,20 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	data_r  = RatioD(data,rata)
 	rata_r  = Ratio(rata,rata)
 
+	# check if the last bin error is significantly different to the others 
+	error_rms = getAveragePull(data_r)
+	pm1 = data_r.GetN()-1
+	data_r_skipLastBin = data_r.Clone(); data_r_skipLastBin.SetName("not_important")
+	textpoints =[]
+	if average(data_r.GetErrorYlow(pm1),data_r.GetErrorYhigh(pm1)) > 3*error_rms:
+		data_r_skipLastBin.SetPoint(data_r.GetN()-1,data_r.GetX()[data_r.GetN()-1],data_r.GetY()[data_r.GetN()-1])
+		#data_r_skipLastBin.SetPoint(data_r.GetN()-1,data_r.GetX()[data_r.GetN()-1],1)
+		data_r_skipLastBin.SetPointError(data_r.GetN()-1,0,0,0,0)
+		data_r_skipLastBin.Draw()
+		if data_r.GetY()[pm1-1] < 1 : ytext = data_r_skipLastBin.GetYaxis().GetXmin()*1.4
+		else: ytext = data_r_skipLastBin.GetYaxis().GetXmax()*0.6
+		#textpoints.append([rata_r.GetBinLowEdge(pm1+1),ytext,data_r.GetY()[pm1],data_r.GetErrorYlow(pm1),data_r.GetErrorYhigh(pm1)])
+
 	rata_r.SetTitle("")
 	rata_r.GetYaxis().SetNdivisions(010)
 	rata_r.GetXaxis().SetRangeUser(rata_r.GetXaxis().GetXmin(),rata_r.GetXaxis().GetXmax())
@@ -163,18 +188,25 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	rata_r.GetYaxis().SetTitleSize(0.08)
 	rata_r.GetYaxis().SetLabelSize(0.08)
 	rata_r.GetYaxis().SetTitle("Data - bkg/Prediction")
-	rata_r.SetMaximum(data_r.GetYaxis().GetXmax())
-	rata_r.SetMinimum(data_r.GetYaxis().GetXmin())
+	rata_r.SetMaximum(data_r_skipLastBin.GetYaxis().GetXmax())
+	rata_r.SetMinimum(data_r_skipLastBin.GetYaxis().GetXmin())
 	
+	rata_r.GetXaxis().SetTitle("M_{jj} (GeV)")
 	rata_r.Draw("AXIS")
 	data_r.Draw("PE")
 	ratae_r.Draw("E2same")
 	ratae_noexp_r.Draw("E2same")
 	ratae_nostat_r.Draw("E2same")
 	rata_r.Draw("histsame")
-	data_r.Draw("PEsame")
+	data_r.Draw("PE0same")
 
+	latex_small = ROOT.TLatex()
+	latex_small.SetTextFont(42)
+	latex_small.SetTextSize(0.12)
+	for lt in textpoints: 
+	  latex_small.DrawLatex(lt[0],lt[1],"%.2f^{+%.2f}_{-%.2f}"%(lt[2],lt[3],lt[4]))
 	pad2.SetTicky()
+	pad2.SetTickx()
 	pad2.RedrawAxis()
 
 	c.cd()
