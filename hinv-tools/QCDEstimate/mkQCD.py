@@ -184,11 +184,11 @@ def fixHistogram(h):
  
 
   bins.append(h.GetBinLowEdge(h.GetNbinsX()+1))
-  if "VTR" in mystring:
-    bm1 = bins[-1]
-    bins = bins[0:-2]; bins.append(bm1)
-    vals[-2]+=vals[-1]
-    errs[-2] = (errs[-2]**2+errs[-1]**2)**0.5
+  # if "VTR" in mystring:
+  #   bm1 = bins[-1]
+  #   bins = bins[0:-2]; bins.append(bm1)
+  #   vals[-2]+=vals[-1]
+  #   errs[-2] = (errs[-2]**2+errs[-1]**2)**0.5
 
   hnew = ROOT.TH1F("%s_fixed"%h.GetName(),"",len(bins)-1,array.array('d',bins))
   for b in range(1,hnew.GetNbinsX()+1): 
