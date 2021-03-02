@@ -3,7 +3,9 @@
 
 This repository can be used to construct the simplified likelihood from experimental inputs as described in [CMS-NOTE-2017-001](https://cds.cern.ch/record/2242860/).
 
-## Checkout SL code using sparse checkout 
+## Checkout SL code 
+
+Best to do this using sparse checkout 
 
 ```
 curl -s https://raw.githubusercontent.com/nucleosynthesis/work-tools/master/stats-tools/SLpython/sparse-checkout-SL-ssh.sh  > sc.sh
@@ -12,7 +14,9 @@ chmod +x sc.sh
 cd work-tools/stats-tools/SLpython
 ```
 
-## The inputs for the simplified likelihood are defined in the configuration file `mymodel.py`. They are as follows 
+## Input file
+
+The inputs for the simplified likelihood are defined in the configuration file `mymodel.py`. They are as follows 
 
  * `data` : A python array of observed data, one entry per bin.
  * `background` : A python array of expected background, one entry per bin. 
@@ -33,7 +37,9 @@ In case you are generating the inputs from combine, or from another source that 
 
 You can mix different ROOT files for these inputs. 
 
-## Run the code with `python sl-python.py --model mymodel`. This will produce a scan of  L(mu), where ![](https://latex.codecogs.com/gif.latex?%5Cinline%20L)  is the **profiled** likelihood and ![](https://latex.codecogs.com/gif.latex?%5Cinline%20%5Cmu) is 
+## Run a LH scan
+
+Run the code with `python sl-python.py --model mymodel`. This will produce a scan of  L(mu), where ![](https://latex.codecogs.com/gif.latex?%5Cinline%20L)  is the **profiled** likelihood and ![](https://latex.codecogs.com/gif.latex?%5Cinline%20%5Cmu) is 
 the signal strength parameter which multiplies the expected signal in each bin. 
 
 Use `--help` for options on setting the range of the parameter and number of points to scan. These will include, 
