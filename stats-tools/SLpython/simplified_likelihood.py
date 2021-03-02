@@ -62,7 +62,7 @@ class simplified_likelihood_linear:
     C = [c-minC for c in C]
   #print zip(R, C)
   plt.plot(R,C)
-  if self.offset: plt.ylabel("-2 $Delta \Log(L)$")
-  else: plt.ylabel("-2 $\Log(L)$")
+  if self.offset: plt.ylabel("-2 $Delta$ Log($L$)")
+  else: plt.ylabel("-2 Log($L$)")
   plt.xlabel("$\mu$")
   plt.show()
