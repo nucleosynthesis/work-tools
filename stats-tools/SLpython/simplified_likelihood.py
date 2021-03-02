@@ -8,6 +8,7 @@ class simplified_likelihood_linear:
   self.inputs_ = model
   self.rmin = options.rMin
   self.rmax = options.rMax
+  self.offset = options.offset
 
   self.set_correlation()
   self.scan(options.npoints)
@@ -56,9 +57,12 @@ class simplified_likelihood_linear:
   # scan points 
   R = numpy.linspace(self.rmin, self.rmax, np)
   C = [self.minimizer(r) for r in R]
-
+  if self.offset: 
+    minC = min(C)
+    C = [c-minC for c in C]
   #print zip(R, C)
   plt.plot(R,C)
-  plt.ylabel("-2 Log(L)")
+  if self.offset: plt.ylabel("-2 $Delta \Log(L)$")
+  else: plt.ylabel("-2 $\Log(L)$")
   plt.xlabel("$\mu$")
   plt.show()

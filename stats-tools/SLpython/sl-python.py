@@ -1,5 +1,5 @@
 import sys
-import array
+import array,numpy
 import simplified_likelihood as SL
 
 from optparse import OptionParser
@@ -11,6 +11,8 @@ parser.add_option("","--model",default="mymodel",help="Choose python model (whic
 #parser.add_option("","--doMultiplicative",default=False,action='store_true',help="Multiplicative rather than additive parameterisation")
 #parser.add_option("","--ignoreCorrelation",default=False,action='store_true',help="Ignore the off-diagonal covariance terms")
 #parser.add_option("","--includeQuadratic",default=False,action='store_true',help="run quadratic version of SL") <-- not yet working
+parser.add_option("","--toy",default=False,action='store_true',help="throw a toy from the background as the data")
+parser.add_option("","--offset",default=False,action='store_true',help="plot deltaNLL not NLL")
 parser.add_option("","--rMin",default=-0.5,type='float')
 parser.add_option("","--rMax",default=2.0,type='float')
 parser.add_option("","--npoints",default=30,type='int',help="Number of points for likelihood scanning")
@@ -23,4 +25,7 @@ print "Simplified Likelihood for model file --> ",
 try : print model.name
 except : print " no named model file"
 
+if options.toy: 
+ toy_d = [numpy.random.poisson(model.background[i]) for i in range(model.nbins)]
+ model.data = array.array('d',toy_d)
 SL.simplified_likelihood_linear(model,options)
