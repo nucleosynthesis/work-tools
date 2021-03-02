@@ -16,6 +16,7 @@ parser.add_option("","--offset",default=False,action='store_true',help="plot del
 parser.add_option("","--rMin",default=-0.5,type='float')
 parser.add_option("","--rMax",default=2.0,type='float')
 parser.add_option("","--npoints",default=30,type='int',help="Number of points for likelihood scanning")
+parser.add_option("","--saveScanAsROOTFile",default="",type='string',help="Save the scan as a ROOT file with this name")
 (options,args)=parser.parse_args()
 
 # HERE we build up the elements for the SL from a python file
