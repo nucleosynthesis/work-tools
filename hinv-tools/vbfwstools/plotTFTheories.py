@@ -178,6 +178,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 		else: ytext = data_r_skipLastBin.GetYaxis().GetXmax()*0.6
 		#textpoints.append([rata_r.GetBinLowEdge(pm1+1),ytext,data_r.GetY()[pm1],data_r.GetErrorYlow(pm1),data_r.GetErrorYhigh(pm1)])
 
+	
 	rata_r.SetTitle("")
 	rata_r.GetYaxis().SetNdivisions(010)
 	rata_r.GetXaxis().SetRangeUser(rata_r.GetXaxis().GetXmin(),rata_r.GetXaxis().GetXmax())
@@ -189,7 +190,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	rata_r.GetYaxis().SetLabelSize(0.08)
 	rata_r.GetYaxis().SetTitle("Data - bkg/Prediction")
 	rata_r.SetMaximum(data_r_skipLastBin.GetYaxis().GetXmax())
-	rata_r.SetMinimum(data_r_skipLastBin.GetYaxis().GetXmin())
+	rata_r.SetMinimum(max([data_r_skipLastBin.GetYaxis().GetXmin(),0]))
 	
 	rata_r.GetXaxis().SetTitle("M_{jj} (GeV)")
 	rata_r.Draw("AXIS")
