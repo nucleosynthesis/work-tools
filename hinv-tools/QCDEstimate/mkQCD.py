@@ -1100,8 +1100,9 @@ for b in range(1,qcdH.GetNbinsX()+1):
      qcdH_shape_up.SetBinError(b,0)
      qcdH_shape_dn.SetBinError(b,0)
      
-if ( transfer_factor_qcd_mc.Integral() > 0):
+if ( qcdH_shape_up.Integral() > 0):
    qcdH_shape_up.Scale(qcdH.Integral("width")/qcdH_shape_up.Integral("width"))
+if ( qcdH_shape_dn.Integral() > 0):
    qcdH_shape_dn.Scale(qcdH.Integral("width")/qcdH_shape_dn.Integral("width"))
 
 qcdH_shape_up.SetLineColor(4); qcdH_shape_up.SetLineStyle(2); qcdH_shape_up.SetFillStyle(0)
@@ -1227,7 +1228,8 @@ if "VTR" in mystring:
 
 # make an original histogram (proper hist)
 qcdCountHisto = makebinned(qcdH)
-qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
+if ( qcdCountHisto.Integral() != 0 ):
+   qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
 fout.WriteTObject(qcdCountHisto)
 
 # and shape uncertainties 
