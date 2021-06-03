@@ -123,7 +123,8 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
         else:
             for iBinMinusOne,binLabel in enumerate(binLabels):
                 #check filters
-                if all([fnmatch.fnmatch(binLabel,filterString) for filterString in filters]):
+                if any([fnmatch.fnmatch(binLabel,filterString) for filterString in filters]):
+                    print("Found matching bin: " + binLabel)
                     #check threshold
                     if totalBackground.GetBinContent(iBinMinusOne+1) > threshold:
                         binLabelsFiltered.append(binLabel)
