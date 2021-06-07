@@ -1297,6 +1297,7 @@ def convertHisto(label,histI):
   #wspace.Delete()
 
 hftemplate = fin.Get("HFTemplate")
+hftemplate = fixHistogram(hftemplate)
 convertHisto(mystring,hftemplate)
 
 
