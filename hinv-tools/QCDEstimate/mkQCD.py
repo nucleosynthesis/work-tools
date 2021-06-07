@@ -1215,6 +1215,7 @@ mcYE  = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdMCH.GetBinError(b)*qcdMCH.GetBi
 print ("Err |",mcYE)
 mcYC = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdClosure.GetBinContent(b)*qcdClosure.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
 print ("clo.|",mcYC)
+
 # --------------------------------------------------------------- end of 5.
 if not options.mkworkspace: 
   print ("Plots stored in ", fout.GetName())
@@ -1284,12 +1285,12 @@ def extend(hin):
   return hnew
 
 def convertHisto(label,histI):
-  hist = histI
+  hist = fixHistogram(histI)
   mystring =  label
   fout = ROOT.TFile("inputs/%s_noiseDD.root"%(mystring.replace(" ","_")),"RECREATE")
   wspace = ROOT.RooWorkspace()
   wspace.SetName("noise_wspace")
-  lVarFit = ROOT.RooRealVar("mjj_%s"%(mystring.replace(" ","_")),"M_{jj} (GeV)",900,5000);
+  lVarFit = ROOT.RooRealVar("mjj_%s"%(mystring.replace(" ","_")),"M_{jj} (GeV)",xmin,5000);
   qcd_dh_nominal = ROOT.RooDataHist("QCD_noise","QCD noise template",ROOT.RooArgList(lVarFit),hist)
   getattr(wspace,"import")(qcd_dh_nominal)
   fout.WriteTObject(wspace)
