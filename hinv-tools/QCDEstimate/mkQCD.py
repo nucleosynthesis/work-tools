@@ -272,7 +272,10 @@ for i in range(npar[0]): f_qcd.SetParameter(i,f_total.GetParameter(i))
 norm_qcd = f_qcd.Integral(CUT,ROOT.TMath.Pi())/BINWIDTH
 
 # R average 
-R_average = f_qcd.Integral(CUT,ROOT.TMath.Pi())/f_qcd.Integral(0,CUT)
+if f_qcd.Integral(0,CUT) > 0:
+   R_average = f_qcd.Integral(CUT,ROOT.TMath.Pi())/f_qcd.Integral(0,CUT)
+else:
+   R_average = f_qcd.Integral(CUT,ROOT.TMath.Pi())
 print ("<R>=N(QCD>%.1f)/N(QCD<%.1f) = "%(CUT,CUT), R_average)
 
 f_qcd.SetLineWidth(2)
@@ -664,7 +667,8 @@ qcdFromFile = fin.Get("BackgroundSubtractedData_CR");
 qcdFromFile_safety = qcdFromFile.Clone(); qcdFromFile_safety.SetName("Safety")
 
 integral = qcdFromFile.Integral()
-qcdFromFile.Scale(norm_qcd/integral);
+if integral > 0:
+   qcdFromFile.Scale(norm_qcd/integral);
 qcdHoriginal = fixHistogram(qcdFromFile)
 qcdBinned = qcdHoriginal.Clone(); qcdBinned.SetName("rebin_QCD")
 qcdH      = makehist(qcdBinned)
@@ -1216,7 +1220,7 @@ if not options.mkworkspace:
   print ("Plots stored in ", fout.GetName())
   fout.Close()
   sys.exit()
-# 6. And finally the histogram for the workspace ! 
+# 6. Make the histogram for the workspace ! 
 
 rebinned_mjj = [200,400,600,900,1200,1500,2000,2750,5000]
 if "VTR" in mystring:
@@ -1258,5 +1262,44 @@ print ("Plots and workspace stored in ", fout.GetName())
 
 wspace.Delete()
 # --------------------------------------------------------------- end of 6.
+
+# 7. And finally the HF histogram for the workspace ! 
+
+if not "VTR" in mystring:
+   sys.exit()
+
+def extend(hin):
+  bins = []
+  # I have to make a new set of bins because for some reason Alp's histograms have 4500 as the last edge
+
+  for b in range(1,hin.GetNbinsX()+1):
+    le = hin.GetBinLowEdge(b)
+    bins.append(le)
+  bins.append(5000) # this is the real end point
+  bins=array.array('d',bins)
+  print bins
+  hnew = ROOT.TH1F(hin.GetName()+"_rbin","rebinned",len(bins)-1,bins)
+  for b in range(1,hin.GetNbinsX()+1): hnew.SetBinContent(b,hin.GetBinContent(b))
+  hnew.Print()
+  return hnew
+
+def convertHisto(label,histI):
+  hist = histI
+  mystring =  label
+  fout = ROOT.TFile("inputs/%s_noiseDD.root"%(mystring.replace(" ","_")),"RECREATE")
+  wspace = ROOT.RooWorkspace()
+  wspace.SetName("noise_wspace")
+  lVarFit = ROOT.RooRealVar("mjj_%s"%(mystring.replace(" ","_")),"M_{jj} (GeV)",900,5000);
+  qcd_dh_nominal = ROOT.RooDataHist("QCD_noise","QCD noise template",ROOT.RooArgList(lVarFit),hist)
+  getattr(wspace,"import")(qcd_dh_nominal)
+  fout.WriteTObject(wspace)
+  #fout.Close()
+  #wspace.Delete()
+
+hftemplate = fin.Get("HFTemplate")
+convertHisto(mystring,hftemplate)
+
+
+# --------------------------------------------------------------- end of 7.
 
 
