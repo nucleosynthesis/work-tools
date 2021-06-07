@@ -96,6 +96,14 @@ def makeFunction(name, WHICH,  mini,maxi, prestring=""):
      npar[0] = 3
 
    return ret 
+   
+def rebin(h,bins):
+
+  hbinned = hnew.Clone();  hnew.SetName(hnew.GetName() + "_rebinned")
+  hbinned = hnew.Rebin(len(bins)-1,hnew.GetName() + "_rebinned",array.array('d',bins))
+  return hbinned
+
+
 def makehist(h): 
   hnew = h.Clone(); hnew.SetName("%s_hist"%h.GetName())
   hnew.GetYaxis().SetTitle("Events/GeV")
@@ -176,11 +184,11 @@ def fixHistogram(h):
  
 
   bins.append(h.GetBinLowEdge(h.GetNbinsX()+1))
-  if "VTR" in mystring:
-    bm1 = bins[-1]
-    bins = bins[0:-2]; bins.append(bm1)
-    vals[-2]+=vals[-1]
-    errs[-2] = (errs[-2]**2+errs[-1]**2)**0.5
+  # if "VTR" in mystring:
+  #   bm1 = bins[-1]
+  #   bins = bins[0:-2]; bins.append(bm1)
+  #   vals[-2]+=vals[-1]
+  #   errs[-2] = (errs[-2]**2+errs[-1]**2)**0.5
 
   hnew = ROOT.TH1F("%s_fixed"%h.GetName(),"",len(bins)-1,array.array('d',bins))
   for b in range(1,hnew.GetNbinsX()+1): 
@@ -200,6 +208,7 @@ def copyAndStoreCanvas(name,can,fi):
   #ROOT.SetOwnership( cans, False )
   fi.WriteTObject(cans)
   cans.SaveAs("%s.pdf"%name)
+  cans.SaveAs("%s.png"%name)
 
 def storeInputs(indir,outdir):
   inputs = indir.GetListOfKeys()
@@ -225,6 +234,7 @@ total_bkg = fdphi.Get("BackgroundSum_CR")
 
 #allow option to scale
 total_bkg.Scale(options.background_scale_factor)
+
 # we need to clean up a bit the data, for bins > 1.5, lets blind it 
 data.GetXaxis().SetTitle("min#Delta#phi(j,p_{T}^{miss})")
 for b in range(1,data.GetNbinsX()+1): 
@@ -262,8 +272,11 @@ for i in range(npar[0]): f_qcd.SetParameter(i,f_total.GetParameter(i))
 norm_qcd = f_qcd.Integral(CUT,ROOT.TMath.Pi())/BINWIDTH
 
 # R average 
-R_average = f_qcd.Integral(CUT,ROOT.TMath.Pi())/f_qcd.Integral(0,CUT)
-print "<R>=N(QCD>%.1f)/N(QCD<%.1f) = "%(CUT,CUT), R_average
+if f_qcd.Integral(0,CUT) > 0:
+   R_average = f_qcd.Integral(CUT,ROOT.TMath.Pi())/f_qcd.Integral(0,CUT)
+else:
+   R_average = f_qcd.Integral(CUT,ROOT.TMath.Pi())
+print ("<R>=N(QCD>%.1f)/N(QCD<%.1f) = "%(CUT,CUT), R_average)
 
 f_qcd.SetLineWidth(2)
 f_bkg.SetLineWidth(2)
@@ -495,7 +508,7 @@ ratio_data.GetXaxis().SetLabelSize(0.12)
 ratio_data.GetXaxis().SetTitleSize(0.24)
 ratio_data.GetXaxis().SetTitleOffset(0.8)
 ratio_data.GetXaxis().SetLabelOffset(0.08)
-ratio_data.GetYaxis().SetNdivisions(010)
+ratio_data.GetYaxis().SetNdivisions(0,1,0)
 ratio_data.SetMinimum(0.51)
 ratio_data.SetMaximum(1.49)
 ratio_data.Draw("PEL")
@@ -590,6 +603,7 @@ if MINFIT>0:
  lminp4.Draw()
 #c0.SaveAs("%s_qcdDD_normfit.pdf"%fin.GetName())
 copyAndStoreCanvas("%s_qcdDD_normfit"%fin.GetName(),c0,pdir)
+
 # ---------------------------------------------------------------- end of 2
 # 3. Draw the toys (hisogram of the norm and correlation matrix)
 ROOT.gStyle.SetOptStat(origStat)
@@ -604,6 +618,7 @@ for p in range(1,npar[0]+1):
   lat.DrawLatex(0.12,0.92,"Mean=%.3f"%allhistogramspars[p-1].GetMean()+", RMS=%.3f"%allhistogramspars[p-1].GetRMS())
 #cP.SaveAs("%s_qcdEstimate_toys.pdf"%fin.GetName())
 copyAndStoreCanvas("%s_qcdEstimate_toys"%fin.GetName(),cP,pdir)
+
 ROOT.gStyle.SetOptStat(0)
 
 # --------------------------------------------------------------- end of 3.
@@ -619,6 +634,7 @@ cMass = ROOT.TCanvas("cmass","cmass",680,540)
 cMass.cd()
 data_plot = fixHistogram(data_plot)
 background_plot = fixHistogram(background_plot)
+
 data_plot = makehist(data_plot)
 background_plot = makehist(background_plot)
 #data_plot.GetYaxis().SetTitle("Events/GeV")
@@ -647,11 +663,12 @@ latmjj.SetTextFont(42)
 latmjj.DrawLatex(0.12,0.92,"%s"%(mystring))
 copyAndStoreCanvas("%s_mjj_CR"%fin.GetName(),cMass,pdir)
 
-
 qcdFromFile = fin.Get("BackgroundSubtractedData_CR"); 
 qcdFromFile_safety = qcdFromFile.Clone(); qcdFromFile_safety.SetName("Safety")
+
 integral = qcdFromFile.Integral()
-qcdFromFile.Scale(norm_qcd/integral);
+if integral > 0:
+   qcdFromFile.Scale(norm_qcd/integral);
 qcdHoriginal = fixHistogram(qcdFromFile)
 qcdBinned = qcdHoriginal.Clone(); qcdBinned.SetName("rebin_QCD")
 qcdH      = makehist(qcdBinned)
@@ -663,7 +680,6 @@ qcdMCHoriginal = fixHistogram(qcdMCFromFile)
 qcdMCBinned    = qcdMCHoriginal.Clone(); qcdMCBinned.SetName("rebin_QCDMC")
 qcdMCH         = makehist(qcdMCBinned)
 
-
 # use the exact same cuts to compare with for Method A
 # UNCOMMENT NEXT 4 LINES TO USE TIGHTER CUT FOR TRANSFER FACTOR
 #qcdMethodAFromFileR  = qcdMCFromFile_safety.Clone(); qcdMethodAFromFileR.SetName("FinalQCD_SRMC")
@@ -673,11 +689,11 @@ qcdMCH         = makehist(qcdMCBinned)
 
 # use the relaxed cut version to compare with for Method A
 # COMMENT NEXT  LINE TO USE TIGHTER CUT FOR TRANSFER FACTOR
-qcdMethodAFromFile = fin.Get("FinalQCD_SR")
+
+qcdMethodAFromFile  = fin.Get("FinalQCD_SR")
 qcdMethodAFromFile.Scale(BLINDFACTOR)
 qcdMethodA = fixHistogram(qcdMethodAFromFile)
 qcdMethodA = makehist(qcdMethodA)
-
 qcdH.SetMinimum(ymin)
 qcdH.SetMaximum(ymax)
 qcdH.GetXaxis().SetTitle("m_{jj} (GeV)")
@@ -690,7 +706,6 @@ qcdH.SetMarkerSize(0.8)
 
 qcdMethodA.SetLineColor(ROOT.kMagenta+1)
 qcdMethodA.SetLineWidth(3)
-
 fillH = qcdH.Clone();fillH.SetName("datanormerror")
 for b in range(fillH.GetNbinsX()): 
   fillH.SetBinError(b+1, fillH.GetBinContent(b+1)*rms)
@@ -744,15 +759,14 @@ qcd_dphi_fake.SetMarkerStyle(4)
 qcd_dphi_fake.SetMarkerSize(0.6)
 
 # make the same functions but for the fake data now (in Region A)
+
 f_bkg_fake = makeFunction("bkg_fake",0,MINFIT,MAXFIT)  # could consider something else like a polynomial added?
 f_bkg_fake.SetParameter(0,background_fake.GetBinContent(1))
 bkg_fit_fake_res = background_fake.Fit("bkg_fake","RNS")
-
 f_total_fake = makeFunction("total_fake",SELECTFUNC,MINFIT,MAXFIT,"%g*exp(-%g*x)*(1+%g*x+%g*x*x)+"%(f_bkg_fake.GetParameter(0),f_bkg_fake.GetParameter(1),f_bkg_fake.GetParameter(2),f_bkg_fake.GetParameter(3)))
 f_total_fake.SetParameter(0,data_fake.GetBinContent(1)-background_fake.GetBinContent(1))
 data_fit_res = data_fake.Fit("total_fake","RNS")
 f_qcd_fake = makeFunction("qcd_fake",SELECTFUNC,MINFIT,ROOT.TMath.Pi())
-
 for i in range(npar[0]): f_qcd_fake.SetParameter(i,f_total_fake.GetParameter(i))
 norm_qcd_fake = f_qcd_fake.Integral(CUT,ROOT.TMath.Pi())/BINWIDTH
 
@@ -767,8 +781,7 @@ f_qcd_fake.SetLineColor(ROOT.kRed)
 f_bkg_fake.SetLineColor(ROOT.kBlue)
 f_total_fake.SetLineColor(1)
 
-
-print " Total closure (fit) -> ", norm_qcd_fake
+print (" Total closure (fit) -> ", norm_qcd_fake)
 norms_fake = []
 centralvals = [f_qcd_fake.GetParameter(p) for p in range(npar[0])]
 rms_fqcd2 = [0. for i in range(background_fake.GetNbinsX())]
@@ -806,7 +819,11 @@ for t in range(NTOYS):
   for b in range(background_fake_t.GetNbinsX()): 
     rms_fbkg2[b]+=(f_bkg_t.Eval(background_fake.GetBinCenter(b+1))-cen_fbkg2[b])**2
 
-rms_fake = (sum(norms_fake)/len(norms_fake))**0.5
+if ( len(norms_fake) > 0 ):
+   rms_fake = (sum(norms_fake)/len(norms_fake))**0.5
+else:
+   rms_fake = 0
+
 # reset 
 for p in range(npar[0]): 
   f_qcd_fake.SetParameter(p,centralvals[p])
@@ -947,7 +964,7 @@ ratio_fake_data.GetXaxis().SetLabelSize(0.12)
 ratio_fake_data.GetXaxis().SetTitleSize(0.24)
 ratio_fake_data.GetXaxis().SetTitleOffset(0.8)
 ratio_fake_data.GetXaxis().SetLabelOffset(0.08)
-ratio_fake_data.GetYaxis().SetNdivisions(010)
+ratio_fake_data.GetYaxis().SetNdivisions(0,1,0)
 ratio_fake_data.SetMinimum(0.51)
 ratio_fake_data.SetMaximum(1.49)
 ratio_fake_data.Draw("PEL")
@@ -1044,9 +1061,11 @@ if MINFIT>0:
 #c4.SaveAs("%s_qcdDD_fakefit.pdf"%fin.GetName())
 copyAndStoreCanvas("%s_qcdDD_fakefit"%fin.GetName(),c4,pdir)
 
+
 qcdFromFakeFile = fin.Get("QCDMC_CR")
 integralfake = qcdFromFakeFile.Integral()
-qcdFromFakeFile.Scale(norm_qcd_fake/integralfake);
+if integralfake > 0:
+   qcdFromFakeFile.Scale(norm_qcd_fake/integralfake);
 qcdClosure = fixHistogram(qcdFromFakeFile)
 qcdClosure = makehist(qcdClosure)
 
@@ -1060,8 +1079,10 @@ fillfakeH.SetFillStyle(3001)
 # also make alternative templates for shape variations 
 transfer_factor_qcd_mc   = fin.Get("BackgroundSubtractedData_B")
 transfer_factor_qcd_mc_d = fin.Get("BackgroundSubtractedData_A")
-transfer_factor_qcd_mc.Scale(1./transfer_factor_qcd_mc.Integral())
-transfer_factor_qcd_mc_d.Scale(1./transfer_factor_qcd_mc_d.Integral())
+if ( transfer_factor_qcd_mc.Integral() > 0):
+   transfer_factor_qcd_mc.Scale(1./transfer_factor_qcd_mc.Integral())
+if ( transfer_factor_qcd_mc_d.Integral() > 0):
+   transfer_factor_qcd_mc_d.Scale(1./transfer_factor_qcd_mc_d.Integral())
 transfer_factor_qcd_mc.Divide(transfer_factor_qcd_mc_d)
 
 transfer_factor_qcd_mc.Fit("pol1")
@@ -1070,15 +1091,23 @@ qcdH_shape_dn = qcdH.Clone(); qcdH_shape_dn.SetName("qcd_DD_shapeUncertaintyDown
 for b in range(1,qcdH.GetNbinsX()+1): 
   dijet_M = qcdH.GetBinCenter(b)
   content_b = qcdH.GetBinContent(b)
-  ratio_b = transfer_factor_qcd_mc.GetFunction("pol1").Eval(dijet_M)
-  if ratio_b < 1.e-8 : ratio_b = 1.e-8
-  qcdH_shape_up.SetBinContent(b,content_b*ratio_b)
-  qcdH_shape_dn.SetBinContent(b,content_b*(1./ratio_b))
-  qcdH_shape_up.SetBinError(b,0)
-  qcdH_shape_dn.SetBinError(b,0)
-
-qcdH_shape_up.Scale(qcdH.Integral("width")/qcdH_shape_up.Integral("width"))
-qcdH_shape_dn.Scale(qcdH.Integral("width")/qcdH_shape_dn.Integral("width"))
+  if ( transfer_factor_qcd_mc.Integral() > 0):
+     ratio_b = transfer_factor_qcd_mc.GetFunction("pol1").Eval(dijet_M)
+     if ratio_b < 1.e-8 : ratio_b = 1.e-8
+     qcdH_shape_up.SetBinContent(b,content_b*ratio_b)
+     qcdH_shape_dn.SetBinContent(b,content_b*(1./ratio_b))
+     qcdH_shape_up.SetBinError(b,0)
+     qcdH_shape_dn.SetBinError(b,0)
+  else:
+     qcdH_shape_up.SetBinContent(b,0)
+     qcdH_shape_dn.SetBinContent(b,0)
+     qcdH_shape_up.SetBinError(b,0)
+     qcdH_shape_dn.SetBinError(b,0)
+     
+if ( qcdH_shape_up.Integral() > 0):
+   qcdH_shape_up.Scale(qcdH.Integral("width")/qcdH_shape_up.Integral("width"))
+if ( qcdH_shape_dn.Integral() > 0):
+   qcdH_shape_dn.Scale(qcdH.Integral("width")/qcdH_shape_dn.Integral("width"))
 
 qcdH_shape_up.SetLineColor(4); qcdH_shape_up.SetLineStyle(2); qcdH_shape_up.SetFillStyle(0)
 qcdH_shape_dn.SetLineColor(4); qcdH_shape_dn.SetLineStyle(2); qcdH_shape_dn.SetFillStyle(0)
@@ -1119,8 +1148,9 @@ ROOT.gStyle.SetOptFit(1111)
 ROOT.gStyle.SetOptStat(1)
 transfer_factor_qcd_mc.GetYaxis().SetTitle("m_{jj} shape in B / m_{jj} shape in A")
 transfer_factor_qcd_mc.Draw("pel")
-transfer_factor_qcd_mc.GetFunction("pol1").SetLineColor(1);
-transfer_factor_qcd_mc.GetFunction("pol1").Draw("same");
+if ( transfer_factor_qcd_mc.Integral() > 0):
+   transfer_factor_qcd_mc.GetFunction("pol1").SetLineColor(1);
+   transfer_factor_qcd_mc.GetFunction("pol1").Draw("same");
 copyAndStoreCanvas("%s_qcdDD_fitTransferForShapeSys"%fin.GetName(),cT,pdir)
 ROOT.gStyle.SetOptFit(0)
 ROOT.gStyle.SetOptStat(0)
@@ -1160,6 +1190,7 @@ legAB.Draw()
 #cD.SaveAs("%s_qcdDD_closureAB.pdf"%fin.GetName())
 copyAndStoreCanvas("%s_qcdDD_closureAB"%fin.GetName(),cF,pdir)
 
+
 cR = ROOT.TCanvas("cR","cR",600,320)
 qcdClosure_ratio = qcdClosure.Clone(); qcdClosure_ratio.SetName("closure")
 qcdClosure_ratio.Divide(qcdMCH)
@@ -1169,35 +1200,50 @@ qcdClosure_ratio.SetMinimum(0)
 #cR.SaveAs("%s_qcdDD_closure_ratio.pdf"%fin.GetName())
 copyAndStoreCanvas("%s_qcdDD_closure_ratio.pdf"%fin.GetName(),cR,pdir)
 
-print "Data driven total (in full lumi) = ", qcdH.Integral("width")/BLINDFACTOR, "+/-", rms*norm_qcd/BLINDFACTOR
-print "QCD MC total (in full lumi) = ", qcdMCH.Integral("width")/BLINDFACTOR
+
+print ("Data driven total (in full lumi) = ", qcdH.Integral("width")/BLINDFACTOR, "+/-", rms*norm_qcd/BLINDFACTOR)
+print ("QCD MC total (in full lumi) = ", qcdMCH.Integral("width")/BLINDFACTOR)
 bins = " | ".join(["%.4d-%.4d"%((qcdH.GetBinLowEdge(b)),(qcdH.GetBinLowEdge(b+1))) for b in range(1,qcdH.GetNbinsX()+1)])
-print "Bin |",bins
+print ("Bin |",bins)
 vals = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdH.GetBinContent(b)*qcdH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "N   |",vals
+print ("N   |",vals)
 errs = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdH.GetBinError(b)*qcdH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "Err |",errs
+print ("Err |",errs)
 mcY  = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdMCH.GetBinContent(b)*qcdMCH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "MC  |",mcY
+print ("MC  |",mcY)
 mcYE  = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdMCH.GetBinError(b)*qcdMCH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "Err |",mcYE
+print ("Err |",mcYE)
 mcYC = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdClosure.GetBinContent(b)*qcdClosure.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "clo.|",mcYC
+print ("clo.|",mcYC)
 # --------------------------------------------------------------- end of 5.
 if not options.mkworkspace: 
-  print "Plots stored in ", fout.GetName()
+  print ("Plots stored in ", fout.GetName())
   fout.Close()
   sys.exit()
-# 6. And finally the histogram for the workspace ! 
+# 6. Make the histogram for the workspace ! 
+
+rebinned_mjj = [200,400,600,900,1200,1500,2000,2750,5000]
+if "VTR" in mystring:
+  rebinned_mjj = [900,1200,1500,2000,2750,5000]
+
+# qcdH = rebin(qcdH, rebinned_mjj)
+# qcdH_shape_up = rebin(qcdH_shape_up, rebinned_mjj)
+# qcdH_shape_down = rebin(qcdH_shape_down, rebinned_mjj)
 
 # make an original histogram (proper hist)
 qcdCountHisto = makebinned(qcdH)
-qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
+if ( qcdCountHisto.Integral() != 0 ):
+   qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
 fout.WriteTObject(qcdCountHisto)
 
 # and shape uncertainties 
-qcdCountH_shape_up = makebinned(qcdH_shape_up); qcdCountH_shape_up.Scale((norm_qcd/BLINDFACTOR)/qcdCountH_shape_up.Integral())
-qcdCountH_shape_dn = makebinned(qcdH_shape_dn); qcdCountH_shape_dn.Scale((norm_qcd/BLINDFACTOR)/qcdCountH_shape_dn.Integral())
+
+qcdCountH_shape_up = makebinned(qcdH_shape_up); 
+if ( qcdCountH_shape_up.Integral() > 0 ):
+   qcdCountH_shape_up.Scale((norm_qcd/BLINDFACTOR)/qcdCountH_shape_up.Integral())
+qcdCountH_shape_dn = makebinned(qcdH_shape_dn);
+if ( qcdCountH_shape_dn.Integral() > 0 ):
+   qcdCountH_shape_dn.Scale((norm_qcd/BLINDFACTOR)/qcdCountH_shape_dn.Integral())
 
 #sys.exit()
 #fout.cd()
@@ -1212,9 +1258,48 @@ getattr(wspace,"import")(qcd_dh_nominal)
 getattr(wspace,"import")(qcd_dh_up)     
 getattr(wspace,"import")(qcd_dh_down)   
 fout.WriteTObject(wspace)
-print "Plots and workspace stored in ", fout.GetName()
+print ("Plots and workspace stored in ", fout.GetName())
 
 wspace.Delete()
 # --------------------------------------------------------------- end of 6.
+
+# 7. And finally the HF histogram for the workspace ! 
+
+if not "VTR" in mystring:
+   sys.exit()
+
+def extend(hin):
+  bins = []
+  # I have to make a new set of bins because for some reason Alp's histograms have 4500 as the last edge
+
+  for b in range(1,hin.GetNbinsX()+1):
+    le = hin.GetBinLowEdge(b)
+    bins.append(le)
+  bins.append(5000) # this is the real end point
+  bins=array.array('d',bins)
+  print bins
+  hnew = ROOT.TH1F(hin.GetName()+"_rbin","rebinned",len(bins)-1,bins)
+  for b in range(1,hin.GetNbinsX()+1): hnew.SetBinContent(b,hin.GetBinContent(b))
+  hnew.Print()
+  return hnew
+
+def convertHisto(label,histI):
+  hist = histI
+  mystring =  label
+  fout = ROOT.TFile("inputs/%s_noiseDD.root"%(mystring.replace(" ","_")),"RECREATE")
+  wspace = ROOT.RooWorkspace()
+  wspace.SetName("noise_wspace")
+  lVarFit = ROOT.RooRealVar("mjj_%s"%(mystring.replace(" ","_")),"M_{jj} (GeV)",900,5000);
+  qcd_dh_nominal = ROOT.RooDataHist("QCD_noise","QCD noise template",ROOT.RooArgList(lVarFit),hist)
+  getattr(wspace,"import")(qcd_dh_nominal)
+  fout.WriteTObject(wspace)
+  #fout.Close()
+  #wspace.Delete()
+
+hftemplate = fin.Get("HFTemplate")
+convertHisto(mystring,hftemplate)
+
+
+# --------------------------------------------------------------- end of 7.
 
 
