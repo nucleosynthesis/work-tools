@@ -1285,7 +1285,7 @@ def extend(hin):
   return hnew
 
 def convertHisto(label,histI):
-  hist = fixHistogram(histI)
+  hist = histI
   mystring =  label
   fout = ROOT.TFile("inputs/%s_noiseDD.root"%(mystring.replace(" ","_")),"RECREATE")
   wspace = ROOT.RooWorkspace()
@@ -1298,8 +1298,8 @@ def convertHisto(label,histI):
   #wspace.Delete()
 
 hftemplate = fin.Get("HFTemplate")
+hftemplate = fixHistogram(hftemplate)
 convertHisto(mystring,hftemplate)
-
 
 # --------------------------------------------------------------- end of 7.
 
