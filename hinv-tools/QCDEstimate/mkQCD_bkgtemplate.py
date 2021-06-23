@@ -46,7 +46,7 @@ R = ROOT.TRandom3()
 origStat = ROOT.gStyle.GetOptStat()
 ROOT.gStyle.SetOptStat(0)
 ROOT.gROOT.SetBatch(1)
-
+ROOT.gROOT.ForceStyle(0)
 
 fin = ROOT.TFile.Open(args[0])
 
@@ -334,7 +334,7 @@ norm_qcd = f_qcd.Integral(CUT,ROOT.TMath.Pi())/BINWIDTH
 
 # R average 
 R_average = f_qcd.Integral(CUT,ROOT.TMath.Pi())/f_qcd.Integral(0,CUT)
-print "<R>=N(QCD>%.1f)/N(QCD<%.1f) = "%(CUT,CUT), R_average
+print ("<R>=N(QCD>%.1f)/N(QCD<%.1f) = "%(CUT,CUT), R_average)
 
 f_qcd.SetLineWidth(2)
 f_total.SetLineWidth(2)
@@ -771,28 +771,29 @@ qcdTransfer.Draw("PEL")
 lat.DrawLatex(0.12,0.92,"%s"%(mystring))
 copyAndStoreCanvas("%s_qcdTransferMC"%fin.GetName(),cR,pdir)
 
-print "Data driven total (in full lumi) = ", qcdH.Integral("width")/BLINDFACTOR, "+/-", rms*norm_qcd/BLINDFACTOR
-print "QCD MC total (in full lumi) = ", qcdMCH.Integral("width")/BLINDFACTOR
+print ("Data driven total (in full lumi) = ", qcdH.Integral("width")/BLINDFACTOR, "+/-", rms*norm_qcd/BLINDFACTOR)
+print ("QCD MC total (in full lumi) = ", qcdMCH.Integral("width")/BLINDFACTOR)
 bins = " | ".join(["%.4d-%.4d"%((qcdH.GetBinLowEdge(b)),(qcdH.GetBinLowEdge(b+1))) for b in range(1,qcdH.GetNbinsX()+1)])
-print "Bin |",bins
+print ("Bin |",bins)
 vals = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdH.GetBinContent(b)*qcdH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "N   |",vals
+print ("N   |",vals)
 errs = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdH.GetBinError(b)*qcdH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "Err |",errs
+print ("Err |",errs)
 mcY  = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdMCH.GetBinContent(b)*qcdMCH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "MC  |",mcY
+print ("MC  |",mcY)
 mcYE  = " | ".join(["%9.2f"%((1./BLINDFACTOR)*qcdMCH.GetBinError(b)*qcdMCH.GetBinWidth(b)) for b in range(1,qcdH.GetNbinsX()+1)]) 
-print "Err |",mcYE
+print ("Err |",mcYE)
 # --------------------------------------------------------------- end of 5.
 if not options.mkworkspace: 
-  print "Plots stored in ", fout.GetName()
+  print ("Plots stored in ", fout.GetName())
   fout.Close()
   sys.exit()
 # 6. And finally the histogram for the workspace ! 
 
 # make an original histogram (proper hist)
 qcdCountHisto = makebinned(qcdH)
-qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
+if ( qcdCountHisto.Integral() != 0 ):
+   qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
 fout.WriteTObject(qcdCountHisto)
 
 lVarFit = ROOT.RooRealVar("mjj_%s"%(mystring.replace(" ","_")),"M_{jj} (GeV)",xmin,5000);
@@ -801,7 +802,7 @@ qcd_dh_nominal = ROOT.RooDataHist("QCD_DD","QCD Data-driven",ROOT.RooArgList(lVa
 
 getattr(wspace,"import")(qcd_dh_nominal)
 fout.WriteTObject(wspace)
-print "Plots and workspace stored in ", fout.GetName()
+print ("Plots and workspace stored in ", fout.GetName())
 
 wspace.Delete()
 # --------------------------------------------------------------- end of 6.
