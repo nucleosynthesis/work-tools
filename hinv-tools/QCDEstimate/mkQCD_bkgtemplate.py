@@ -193,8 +193,24 @@ def copyAndStoreCanvas(name,can,fi):
     copies.append(obj)
   fi.WriteTObject(cans)
   cans.SaveAs("%s.pdf"%name)
+  cans.SaveAs("%s.png"%name)
 
 # -----------------------------------------------------------------------------------------------
+def storeInputs(indir,outdir):
+  inputs = indir.GetListOfKeys()
+  for k in inputs:
+    obj = k.ReadObj()
+    nam = k.GetName() 
+    if obj.InheritsFrom(ROOT.TDirectory.Class()): 
+      newdir = outdir.mkdir(obj.GetName())
+      storeInputs(obj,newdir)
+    else: 
+      #print " Writing ", nam, " to ", outdir
+      outdir.WriteTObject(obj,nam)
+# -----------------------------------------------------------------------------------------------
+# 0. save the inputs
+fdirInput = fout.mkdir("Inputs")
+storeInputs(fin,fdirInput)
 # 1. First we are going to make a fit of the min deltaPhi distribution (below MAXFIT)
 fdphi = fin.Get("MetNoLep_CleanJet_mindPhi")#ROOT.TFile.Open(fdphi_name)
 
