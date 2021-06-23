@@ -675,6 +675,16 @@ qcdMCHoriginal = fixHistogram(qcdMCFromFile)
 qcdMCBinned    = qcdMCHoriginal.Clone(); qcdMCBinned.SetName("rebin_QCDMC")
 qcdMCH         = makehist(qcdMCBinned)
 
+qcdTransfer    = qcdMCHoriginal.Clone(); qcdMCH.SetName("QCD_Multijet_Transfer")
+qcdTransfer.SetMarkerColor(ROOT.kRed)
+qcdTransfer.SetLineColor(ROOT.kRed)
+qcdTransfer.SetLineWidth(2)
+qcdTransfer.SetMarkerSize(1.0)
+qcdTransfer.SetMarkerStyle(21)
+qcdCRForTransfer = fin.Get("QCDMC_CR")
+qcdCRForTransfer.Scale(BLINDFACTOR)
+qcdTransfer.Divide(fixHistogram(qcdCRForTransfer))
+
 qcdMethodAFromFile  = fin.Get("FinalQCD_SR")
 qcdMethodAFromFile.Scale(BLINDFACTOR)
 qcdMethodA = fixHistogram(qcdMethodAFromFile)
@@ -736,6 +746,14 @@ lat.DrawLatex(0.62,0.92,"(%.1f #times total lumi.)"%(BLINDFACTOR))
 lat.DrawLatex(0.12,0.92,mystring)
 #cD.SaveAs("%s_qcdDD.pdf"%fin.GetName())
 copyAndStoreCanvas("%s_qcdDD"%fin.GetName(),cD,pdir)
+
+
+cR = ROOT.TCanvas("cR","cR",600,420)
+qcdTransfer.GetYaxis().SetTitle("QCD Multijet MC SR/CR")
+qcdTransfer.GetXaxis().SetTitle("m_{jj} GeV")
+qcdTransfer.Draw("PEL")
+lat.DrawLatex(0.12,0.92,"%s"%(mystring))
+copyAndStoreCanvas("%s_qcdTransferMC"%fin.GetName(),cR,pdir)
 
 print "Data driven total (in full lumi) = ", qcdH.Integral("width")/BLINDFACTOR, "+/-", rms*norm_qcd/BLINDFACTOR
 print "QCD MC total (in full lumi) = ", qcdMCH.Integral("width")/BLINDFACTOR
