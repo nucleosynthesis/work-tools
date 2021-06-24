@@ -136,7 +136,7 @@ def binFunction(h, f,xmin=-999,xmax=-999,addhist=None):
     else: hnew.SetBinContent(i,valued/bw)
   hnew.SetLineColor(f.GetLineColor())
   hnew.SetLineWidth(2)
-
+  if addhist!=None: hnew.Add(addhist)
   return hnew 
 
 def chopHistogram(h, xmin=-999,xmax=-999): 
