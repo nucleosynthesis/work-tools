@@ -627,7 +627,7 @@ ROOT.gStyle.SetOptStat(0)
 # First make a plot 
 data_plot = (fin.Get("MET_CR")).Clone(); data_plot.SetName("data_for_plot")
 background_plot = (fin.Get("VV_CR")).Clone(); background_plot.SetName("non_QCD_backgrounds")
-for bkg_plot in ["TOP_CR","DY_CR","EWKZll_CR","EWKZNUNU_CR","ZJETS_CR","EWKW_CR","WJETS_CR","BackgroundSubtractedData_HFCR"]:
+for bkg_plot in ["TOP_CR","DY_CR","EWKZll_CR","EWKZNUNU_CR","ZJETS_CR","EWKW_CR","WJETS_CR","HFTemplate_CR"]:
  background_plot.Add((fin.Get(bkg_plot)).Clone())
 background_plot.Scale(options.background_scale_factor)
 cMass = ROOT.TCanvas("cmass","cmass",680,540)
