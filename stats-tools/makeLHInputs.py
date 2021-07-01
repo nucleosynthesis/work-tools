@@ -112,6 +112,7 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
         totalSignal = iFile.Get("shapes_{0}/total_signal".format(whichFit))
         total = iFile.Get("shapes_{0}/total_overall".format(whichFit))
         totalData = iFile.Get("shapes_{0}/total_data".format(whichFit))
+        totalWidth = iFile.Get("shapes_{0}/total_bin_width".format(whichFit))
         totalSignal.SetName("signalTemp")
 
         #make restricted set of bins based on filters + thresh
@@ -123,7 +124,8 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
         else:
             for iBinMinusOne,binLabel in enumerate(binLabels):
                 #check filters
-                if all([fnmatch.fnmatch(binLabel,filterString) for filterString in filters]):
+                if any([fnmatch.fnmatch(binLabel,filterString) for filterString in filters]):
+                    print("Found matching bin: " + binLabel)
                     #check threshold
                     if totalBackground.GetBinContent(iBinMinusOne+1) > threshold:
                         binLabelsFiltered.append(binLabel)
@@ -142,13 +144,17 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
                 dataX = r.Double(0.)
                 dataY = r.Double(0.) 
                 totalData.GetPoint(binDict[binLabel]-1,dataX,dataY)
-                outData.SetBinContent(iBinMinusOne+1,dataY)
-                outTotal.SetBinError(iBinMinusOne+1,total.GetBinError(binDict[binLabel]))
-                outTotal.SetBinContent(iBinMinusOne+1,total.GetBinContent(binDict[binLabel]))
-                outBackground.SetBinContent(iBinMinusOne+1,totalBackground.GetBinContent(binDict[binLabel]))
-                outBackground.SetBinError(iBinMinusOne+1,totalBackground.GetBinError(binDict[binLabel]))
-                outSignal.SetBinError(iBinMinusOne+1,totalSignal.GetBinError(binDict[binLabel]))
-                outSignal.SetBinContent(iBinMinusOne+1,totalSignal.GetBinContent(binDict[binLabel]))
+
+                # All bin contents are normalized to bin width
+                # -> We invert this here so that bin contents are absolute yields
+                bin_width = totalWidth.GetBinContent(binDict[binLabel])
+                outData.SetBinContent(iBinMinusOne+1, dataY*bin_width)
+                outTotal.SetBinError(iBinMinusOne+1,total.GetBinError(binDict[binLabel])*bin_width)
+                outTotal.SetBinContent(iBinMinusOne+1,total.GetBinContent(binDict[binLabel])*bin_width)
+                outBackground.SetBinContent(iBinMinusOne+1,totalBackground.GetBinContent(binDict[binLabel])*bin_width)
+                outBackground.SetBinError(iBinMinusOne+1,totalBackground.GetBinError(binDict[binLabel])*bin_width)
+                outSignal.SetBinError(iBinMinusOne+1,totalSignal.GetBinError(binDict[binLabel])*bin_width)
+                outSignal.SetBinContent(iBinMinusOne+1,totalSignal.GetBinContent(binDict[binLabel])*bin_width)
 
                 outBackground.GetXaxis().SetBinLabel(iBinMinusOne+1,binLabel)
                 outSignal.GetXaxis().SetBinLabel(iBinMinusOne+1,binLabel)
@@ -157,7 +163,10 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
                 outCovar.GetXaxis().SetBinLabel(iBinMinusOne+1,binLabel)
                 outCovar.GetYaxis().SetBinLabel(iBinMinusOne+1,binLabel)
                 for jBinMinusOne,binLabel2 in enumerate(binLabelsFiltered):
-                    outCovar.SetBinContent(iBinMinusOne+1,jBinMinusOne+1,covarianceInput.GetBinContent(binDict[binLabel],binDict[binLabel2]))
+                    # The covariance is also bin width normalized
+                    bin_width_2 =  totalWidth.GetBinContent(binDict[binLabel2])
+                    cov = covarianceInput.GetBinContent(binDict[binLabel],binDict[binLabel2]) * bin_width * bin_width_2
+                    outCovar.SetBinContent(iBinMinusOne+1,jBinMinusOne+1,cov)
         iFile.Close()
         #write it!
         outTotal.Write()
