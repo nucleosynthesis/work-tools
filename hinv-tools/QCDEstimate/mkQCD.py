@@ -4,7 +4,7 @@ REBINFACTOR = 1
 
 ####################### SETTINGS TO DEFINE HARDCODED ############################################################
 # ideally we should include ~10% on the V+jets background estimate when doing the QCD, here is where we define it 
-BKGSYS = 1.0
+BKGSYS = 1.1
 
 # for the uncertainties from the fit we throw toys, define here the number to use 
 NTOYS=1000
@@ -496,6 +496,8 @@ hist_f_total_with_errors.SetFillStyle(1001)
 hist_f_total_with_errors.SetFillColor(ROOT.kMagenta-9)
 for i in range(hist_f_total_with_errors.GetNbinsX()): 
   hist_f_total_with_errors.SetBinError(i+1,rms_ftot[i])
+hist_f_total_with_errors_toSave = hist_f_total_with_errors.Clone(); hist_f_total_with_errors_toSave.SetName("total_background_with_uncertainty_CR")
+
 hist_f_total_with_errors.Divide(hist_f_total)
 hist_f_total_with_errors.SetMarkerSize(0)
 hist_f_total_with_errors.SetFillColor(ROOT.kGray)
@@ -1235,6 +1237,14 @@ qcdCountHisto = makebinned(qcdH)
 if ( qcdCountHisto.Integral() != 0 ):
    qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
 fout.WriteTObject(qcdCountHisto)
+
+# make a helpful scale-factor 
+histo_background_scale_factor = ROOT.TH1F("bkg_sf","background SF from fit",1,0,1)
+histo_background_scale_factor.SetBinContent(1,1.)
+fout.WriteTObject(histo_background_scale_factor)
+
+#  Write the total that has the unccertainties 
+fout.WriteTObject(hist_f_total_with_errors_toSave)
 
 # and shape uncertainties 
 

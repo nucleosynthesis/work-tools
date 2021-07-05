@@ -333,7 +333,7 @@ for i in range(npar[0]):
  f_qcd.SetParameter(i,f_total.GetParameter(i))
  print "qcd tail parameter ",i, f_qcd.GetParameter(i)
 
-print  "fitted background scale factor is ", background_scalefactor_fromfit
+print  "fitted background scale factor is ", (1+background_scalefactor_fromfit*BKGSYS) 
 total_bkg.Scale(1.+background_scalefactor_fromfit*BKGSYS)
 
 norm_qcd = f_qcd.Integral(CUT,ROOT.TMath.Pi())/BINWIDTH
@@ -542,6 +542,10 @@ hist_f_total_with_errors.SetFillStyle(1001)
 hist_f_total_with_errors.SetFillColor(ROOT.kMagenta-9)
 for i in range(hist_f_total_with_errors.GetNbinsX()): 
   hist_f_total_with_errors.SetBinError(i+1,rms_ftot[i])
+
+hist_f_total_with_errors_toSave = hist_f_total_with_errors.Clone(); hist_f_total_with_errors_toSave.SetName("total_background_with_uncertainty_CR")
+
+
 hist_f_total_with_errors.Divide(hist_f_total)
 hist_f_total_with_errors.SetMarkerSize(0)
 hist_f_total_with_errors.SetFillColor(ROOT.kGray)
@@ -645,6 +649,12 @@ cMass = ROOT.TCanvas("cmass","cmass",680,540)
 cMass.cd()
 data_plot = fixHistogram(data_plot)
 background_plot = fixHistogram(background_plot)
+
+# make another version of the background subtracted data
+qcdFromFile = data_plot.Clone(); qcdFromFile.SetName("BackgroundSubtractedData_CR_afterfit")
+qcdFromFile.Add(background_plot,-1)
+
+# ok, now histogram version and plot
 data_plot = makehist(data_plot)
 background_plot = makehist(background_plot)
 #data_plot.GetYaxis().SetTitle("Events/GeV")
@@ -673,7 +683,7 @@ latmjj.SetTextFont(42)
 latmjj.DrawLatex(0.12,0.92,"%s"%(mystring))
 copyAndStoreCanvas("%s_mjj_CR"%fin.GetName(),cMass,pdir)
 
-qcdFromFile = fin.Get("BackgroundSubtractedData_CR"); 
+#qcdFromFile = fin.Get("BackgroundSubtractedData_CR"); 
 qcdFromFile_safety = qcdFromFile.Clone(); qcdFromFile_safety.SetName("Safety")
 integral = qcdFromFile.Integral()
 if integral > 0:
@@ -773,6 +783,14 @@ qcdCountHisto = makebinned(qcdH)
 if ( qcdCountHisto.Integral() != 0 ):
    qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
 fout.WriteTObject(qcdCountHisto)
+
+#  Write the total that has the unccertainties 
+fout.WriteTObject(hist_f_total_with_errors_toSave)
+
+# make a helpful scale-factor 
+histo_background_scale_factor = ROOT.TH1F("bkg_sf","background SF from fit",1,0,1)
+histo_background_scale_factor.SetBinContent(1,(1+background_scalefactor_fromfit*BKGSYS))
+fout.WriteTObject(histo_background_scale_factor)
 
 lVarFit = ROOT.RooRealVar("mjj_%s"%(mystring.replace(" ","_")),"M_{jj} (GeV)",xmin,5000);
 
