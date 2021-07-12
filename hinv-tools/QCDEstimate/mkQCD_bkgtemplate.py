@@ -3,8 +3,8 @@ BLINDFACTOR = 1.
 REBINFACTOR = 1
 
 ####################### SETTINGS TO DEFINE HARDCODED ############################################################
-# ideally we should include ~10% on the V+jets background estimate when doing the QCD, here is where we define it 
-BKGSYS = 0.2
+# ideally we should include ~20% on the V+jets background estimate when doing the QCD, here is where we define it 
+BKGSYS = 1.
 
 # for the uncertainties from the fit we throw toys, define here the number to use 
 NTOYS=1000
@@ -91,6 +91,15 @@ def makeFunction(name, WHICH,  mini,maxi, prestring=""):
      ret.SetParameter(1,-2.)
      ret.SetParameter(2,1.)
      npar[0] = 3
+   
+   elif WHICH==3:
+     ret = ROOT.TF1(name,"[0]*exp(-1*(x-[1])*(x-[1])/(2*[2]*[2]))+[3]*exp(-[4]*x)",mini,maxi);
+     ret.SetParameter(1,-2.)
+     ret.SetParameter(2,1.)
+     ret.SetParameter(3,10.)
+     ret.SetParameter(4,-1.)
+     npar[0] = 5
+
    return ret 
 def rebin(h,bins):
 
@@ -333,7 +342,7 @@ for i in range(npar[0]):
  f_qcd.SetParameter(i,f_total.GetParameter(i))
  print "qcd tail parameter ",i, f_qcd.GetParameter(i)
 
-print  "fitted background scale factor is ", background_scalefactor_fromfit
+print  "fitted background scale factor is ", (1+background_scalefactor_fromfit*BKGSYS) 
 total_bkg.Scale(1.+background_scalefactor_fromfit*BKGSYS)
 
 norm_qcd = f_qcd.Integral(CUT,ROOT.TMath.Pi())/BINWIDTH
@@ -383,7 +392,7 @@ rms_fqcd = [0. for i in range(total_bkg.GetNbinsX())]
 cen_fqcd = [f_qcd.Eval(total_bkg.GetBinCenter(i+1)) for i in range(total_bkg.GetNbinsX())]
 
 rms_ftot = [0. for i in range(total_bkg.GetNbinsX())]
-cen_ftot = [f_total.Eval(total_bkg.GetBinCenter(i+1)) + total_bkg.GetBinContent(i+1) for i in range(total_bkg.GetNbinsX())]
+cen_ftot = [f_qcd.Eval(total_bkg.GetBinCenter(i+1)) + total_bkg.GetBinContent(i+1) for i in range(total_bkg.GetNbinsX())]
 
 for t in range(NTOYS): 
   data_t = makeToyData(data) 
@@ -392,17 +401,23 @@ for t in range(NTOYS):
   total_bkg_t = makeToyData(total_bkg,BKGSYS)
   f_total_toy = makeFunction("total_toy%d"%(t),SELECTFUNC,MINFIT,MAXFIT)
   for i in range(f_total.GetNumberFreeParameters()): f_total_toy.SetParameter(i,f_total.GetParameter(i))
+
   bkgscale_t = simfit(data_t,f_total_toy,total_bkg_t,0)
+  #print " in toy ", t
+  #print "random yield - ", total_bkg_t.Integral(), " / orig ", total_bkg_t.Integral()/total_bkg.Integral()
+  #print " scale-from-fit - ", 1+BKGSYS*bkgscale_t[0]
+  
   total_bkg_t.Scale(1+BKGSYS*bkgscale_t[0])
   
   for i in range(npar[0]): f_qcd.SetParameter(i,f_total_toy.GetParameter(i))
+ 
   norm_qcd_t = f_qcd.Integral(CUT,ROOT.TMath.Pi())/BINWIDTH
   norms.append(ROOT.TMath.Log(norm_qcd_t/norm_qcd)**2)
   for b in range(total_bkg.GetNbinsX()): 
    rms_fqcd[b]+=(f_qcd.Eval(total_bkg.GetBinCenter(b+1))-cen_fqcd[b])**2
   
   for b in range(total_bkg.GetNbinsX()): 
-   total_t_f = f_total_toy.Eval(total_bkg.GetBinCenter(b+1))+total_bkg_t.GetBinContent(b+1)
+   total_t_f = f_qcd.Eval(total_bkg.GetBinCenter(b+1))+total_bkg_t.GetBinContent(b+1)
    rms_ftot[b]+=(total_t_f-cen_ftot[b])**2
 
   for p in range(f_total.GetNumberFreeParameters()): allhistogramspars[p].Fill(f_total_toy.GetParameter(p))
@@ -416,6 +431,7 @@ for p in range(npar[0]):
 
 rms_fqcd = [(ff/NTOYS)**0.5 for ff in rms_fqcd]
 rms_ftot = [(ff/NTOYS)**0.5 for ff in rms_ftot]
+
 
 hf_qcd = binFunction(data,f_qcd)
 hf_qcd.SetName("fake_qcd_errorband")
@@ -540,8 +556,16 @@ ratio_data.Divide(hist_f_total)
 hist_f_total_with_errors = hist_f_total.Clone(); hist_f_total_with_errors.SetName("magenta_hist_errors")
 hist_f_total_with_errors.SetFillStyle(1001)
 hist_f_total_with_errors.SetFillColor(ROOT.kMagenta-9)
+
+print "From toys, error per bin in total ... "
 for i in range(hist_f_total_with_errors.GetNbinsX()): 
+  print i, hist_f_total_with_errors.GetBinCenter(i+1),rms_ftot[i],rms_ftot[i]/hist_f_total_with_errors.GetBinContent(i+1) 
   hist_f_total_with_errors.SetBinError(i+1,rms_ftot[i])
+
+
+hist_f_total_with_errors_toSave = hist_f_total_with_errors.Clone(); hist_f_total_with_errors_toSave.SetName("total_background_with_uncertainty_CR")
+
+
 hist_f_total_with_errors.Divide(hist_f_total)
 hist_f_total_with_errors.SetMarkerSize(0)
 hist_f_total_with_errors.SetFillColor(ROOT.kGray)
@@ -645,6 +669,12 @@ cMass = ROOT.TCanvas("cmass","cmass",680,540)
 cMass.cd()
 data_plot = fixHistogram(data_plot)
 background_plot = fixHistogram(background_plot)
+
+# make another version of the background subtracted data
+qcdFromFile = data_plot.Clone(); qcdFromFile.SetName("BackgroundSubtractedData_CR_afterfit")
+qcdFromFile.Add(background_plot,-1)
+
+# ok, now histogram version and plot
 data_plot = makehist(data_plot)
 background_plot = makehist(background_plot)
 #data_plot.GetYaxis().SetTitle("Events/GeV")
@@ -673,7 +703,7 @@ latmjj.SetTextFont(42)
 latmjj.DrawLatex(0.12,0.92,"%s"%(mystring))
 copyAndStoreCanvas("%s_mjj_CR"%fin.GetName(),cMass,pdir)
 
-qcdFromFile = fin.Get("BackgroundSubtractedData_CR"); 
+#qcdFromFile = fin.Get("BackgroundSubtractedData_CR"); 
 qcdFromFile_safety = qcdFromFile.Clone(); qcdFromFile_safety.SetName("Safety")
 integral = qcdFromFile.Integral()
 if integral > 0:
@@ -773,6 +803,14 @@ qcdCountHisto = makebinned(qcdH)
 if ( qcdCountHisto.Integral() != 0 ):
    qcdCountHisto.Scale((norm_qcd/BLINDFACTOR)/qcdCountHisto.Integral())
 fout.WriteTObject(qcdCountHisto)
+
+#  Write the total that has the unccertainties 
+fout.WriteTObject(hist_f_total_with_errors_toSave)
+
+# make a helpful scale-factor 
+histo_background_scale_factor = ROOT.TH1F("bkg_sf","background SF from fit",1,0,1)
+histo_background_scale_factor.SetBinContent(1,(1+background_scalefactor_fromfit*BKGSYS))
+fout.WriteTObject(histo_background_scale_factor)
 
 lVarFit = ROOT.RooRealVar("mjj_%s"%(mystring.replace(" ","_")),"M_{jj} (GeV)",xmin,5000);
 
