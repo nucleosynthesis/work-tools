@@ -825,8 +825,8 @@ wspace.Delete()
 
 # 7. And finally the HF histogram for the workspace ! 
 
-if not "VTR" in mystring:
-   sys.exit()
+# if not "VTR" in mystring:
+#    sys.exit()
 
 def extend(hin):
   bins = []
