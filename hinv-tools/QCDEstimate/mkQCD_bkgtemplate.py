@@ -825,8 +825,8 @@ wspace.Delete()
 
 # 7. And finally the HF histogram for the workspace ! 
 
-if not "VTR" in mystring:
-   sys.exit()
+#if not "VTR" in mystring:
+#   sys.exit()
 
 def extend(hin):
   bins = []
@@ -849,7 +849,7 @@ def convertHisto(label,histI):
   fout = ROOT.TFile("inputs/%s_noiseDD.root"%(mystring.replace(" ","_")),"RECREATE")
   wspace = ROOT.RooWorkspace()
   wspace.SetName("noise_wspace")
-  lVarFit = ROOT.RooRealVar("mjj_%s"%(mystring.replace(" ","_")),"M_{jj} (GeV)",900,5000);
+  lVarFit = ROOT.RooRealVar("mjj_%s"%(mystring.replace(" ","_")),"M_{jj} (GeV)",xmin,5000);
   qcd_dh_nominal = ROOT.RooDataHist("QCD_noise","QCD noise template",ROOT.RooArgList(lVarFit),hist)
   getattr(wspace,"import")(qcd_dh_nominal)
   fout.WriteTObject(wspace)
