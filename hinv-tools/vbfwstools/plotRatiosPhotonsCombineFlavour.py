@@ -1,5 +1,5 @@
+import array
 import ROOT 
-# WORK IN PROGRESS - THE IDEA IS TO TRY TO CREATE photon/Z plots from the workspace that uses the BU datacards
 
 class TFValidator: 
  def __init__(self,input_ws_file,fit_file):
@@ -15,20 +15,47 @@ class TFValidator:
   self.ntoys = 1000
 
   self.cat = "MTR_2017"
-  self.ZProc = "Zmumu"
   self.PProc = "photon"
-  self.ZR = "ZMUMU"
   self.PR = "photon"
   self.year = "2017"
+
+ def AddTGraphs(self,g1,g2):
+  
+  print "Trying to add graph", g1.GetName(), " to ", g2.GetName()
+  up = array.array('d',[0])
+  dn = array.array('d',[0])
+
+  for p in range(g1.GetN()):
+    y2 = g2.GetY()[p]
+    
+    x  = g1.GetX()[p]
+    y1 = g1.GetY()[p]
+
+    xeu = g1.GetErrorXhigh(p)
+    xel = g1.GetErrorXlow(p)
+
+    bw      = xel+xeu
+    central = (y1+y2)*bw
+    
+    g1.SetPoint(p,x,central/bw)
+    
+    ROOT.RooHistError.instance().getPoissonInterval(int(central),dn,up,1)
+    uE = up[0]-central
+    dE = central-dn[0]
+
+    g1.SetPointError(p,xel,xeu,dE/bw,uE/bw)
+
  def calcR(self,b):
-  zq = self.workspace.function("%s_QCDV_%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
-  ze = self.workspace.function("%s_EWKV_%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
+  zq_ee = self.workspace.function("%s_QCDV_Zee_bin%d"%(self.cat,b)).getVal()
+  ze_ee = self.workspace.function("%s_EWKV_Zee_bin%d"%(self.cat,b)).getVal()
+  zq_mm = self.workspace.function("%s_QCDV_Zmumu_bin%d"%(self.cat,b)).getVal()
+  ze_mm = self.workspace.function("%s_EWKV_Zmumu_bin%d"%(self.cat,b)).getVal()
 
   pq = self.workspace.function("pmu_cat_vbf_%s_qcd_zjets_ch_qcd_%s_bin%d"%(self.year,self.PProc,b)).getVal()
   pe = self.workspace.function("pmu_cat_vbf_%s_ewk_zjets_ch_ewk_%s_bin%d"%(self.year,self.PProc,b)).getVal()
 
   #print "%sQCDV_Z%s_bin%d"%(self.cat,self.ZProc,b), "%sQCDV_W%s_bin%d"%(self.cat,self.WProc,b)
-  return (pe+pq)/(ze+zq)
+  return (pe+pq)/(ze_ee+zq_ee+zq_mm+ze_mm)
 
 
  def returnRMS(self,b,includeStat=False, includeAll=False): 
@@ -36,11 +63,16 @@ class TFValidator:
   r2=0
   mean=0 
   
-  allpars  = self.workspace.function("%s_QCDV_%s_bin%d"%(self.cat,self.ZProc,b)).getParameters(ROOT.RooArgSet())
-  allpars2 = self.workspace.function("%s_EWKV_%s_bin%d"%(self.cat,self.ZProc,b)).getParameters(ROOT.RooArgSet())
+  allpars   = self.workspace.function("%s_QCDV_Zee_bin%d"%(self.cat,b)).getParameters(ROOT.RooArgSet())
+  allpars2  = self.workspace.function("%s_EWKV_Zee_bin%d"%(self.cat,b)).getParameters(ROOT.RooArgSet())
+  allpars2a = self.workspace.function("%s_QCDV_Zmumu_bin%d"%(self.cat,b)).getParameters(ROOT.RooArgSet())
+  allpars2b = self.workspace.function("%s_EWKV_Zmumu_bin%d"%(self.cat,b)).getParameters(ROOT.RooArgSet())
   allpars3 = self.workspace.function("pmu_cat_vbf_%s_qcd_zjets_ch_qcd_%s_bin%d"%(self.year,self.PProc,b)).getParameters(ROOT.RooArgSet())
   allpars4 = self.workspace.function("pmu_cat_vbf_%s_ewk_zjets_ch_ewk_%s_bin%d"%(self.year,self.PProc,b)).getParameters(ROOT.RooArgSet())
+  
   allpars.add(allpars2)
+  allpars.add(allpars2a)
+  allpars.add(allpars2b)
   allpars.add(allpars3)
   allpars.add(allpars4)
   
@@ -150,8 +182,8 @@ class TFValidator:
 
  def calcRdata(self,b):
 
-  print "shapes_prefit/%s_%s/data"%(self.cat,self.ZR)
-  data_Z = self.fit_file.Get("shapes_prefit/%s_%s/data"%(self.cat,self.ZR))
+  data_Z = self.fit_file.Get("shapes_prefit/%s_ZEE/data"%(self.cat))
+  self.AddTGraphs(data_Z,self.fit_file.Get("shapes_prefit/%s_ZMUMU/data"%(self.cat)))
   Zd     = data_Z.GetY()[b-1]
   Zeu     = data_Z.GetErrorYhigh(b-1)
   Zed     = data_Z.GetErrorYlow(b-1)
@@ -162,9 +194,11 @@ class TFValidator:
   Ped     = data_P.GetErrorYlow(b-1)
 
   # Remove the backgrounds!
-  TT_Z  = self.fit_file.Get("shapes_prefit/%s_%s/TOP"%(self.cat,self.ZR))
+  TT_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/TOP"%(self.cat))
+  TT_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/TOP"%(self.cat)))
   ttZ_d = TT_Z.GetBinContent(b)
-  VV_Z  = self.fit_file.Get("shapes_prefit/%s_%s/VV"%(self.cat,self.ZR))
+  VV_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/VV"%(self.cat))
+  VV_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/VV"%(self.cat)))
   VVZ_d = VV_Z.GetBinContent(b)
 
   

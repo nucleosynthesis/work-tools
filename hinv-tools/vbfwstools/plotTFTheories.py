@@ -188,7 +188,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	rata_r.GetXaxis().SetLabelSize(0.08)
 	rata_r.GetYaxis().SetTitleSize(0.08)
 	rata_r.GetYaxis().SetLabelSize(0.08)
-	rata_r.GetYaxis().SetTitle("Data - bkg/Prediction")
+	rata_r.GetYaxis().SetTitle("(Data - bkg)/Prediction")
 	rata_r.SetMaximum(data_r_skipLastBin.GetYaxis().GetXmax())
 	rata_r.SetMinimum(max([data_r_skipLastBin.GetYaxis().GetXmin(),0]))
 	
@@ -235,7 +235,25 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 
 
 # inputs are cat ZProc, WProc, ZR, WR, ytitle, ymin, ymax, outname
-def checkLoadAndRun(year): 
+def checkLoadAndRun(year,combineleptons=False): 
+  if combineleptons:
+	if "photon" in sys.argv[2]:
+	  # better check if it makes sense in this case 
+	  if "VTR" in sys.argv[1]: 
+	    print "No photon CR in VTR, skipping"
+	    return 0 
+	    #sys.exit("No photon CR in VTR, skipping")
+	  import plotRatiosPhotonsCombineFlavour
+	  tf = plotRatiosPhotonsCombineFlavour.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
+
+	else : 
+	  print "New thing"
+	  import plotRatiosCombineFlavour
+	  tf = plotRatiosCombineFlavour.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
+
+	tf.cat   = sys.argv[1]
+
+  else: 
 	if "photon" in sys.argv[3]:
 	  # better check if it makes sense in this case 
 	  if "VTR" in sys.argv[1]: 
@@ -254,18 +272,25 @@ def checkLoadAndRun(year):
 
 	tf.cat   = sys.argv[1]
 	tf.ZProc = sys.argv[2]
-	tf.ZR = sys.argv[4]
 
-  	
-	tf.year = year
+  tf.ZR = sys.argv[4]
+  tf.year = year
+  return tf
 
-	return tf
-
-ytitle = sys.argv[6]
-ymin = sys.argv[7]
-ymax = sys.argv[8]
-out  = sys.argv[9]
-clab = sys.argv[10]#
+combinedleptons = False
+if (sys.argv[2]=="lepton") or (sys.argv[2]=="photon"):
+ combinedleptons = True
+ ytitle = sys.argv[3]
+ ymin = sys.argv[4]
+ ymax = sys.argv[5]
+ out  = sys.argv[6]
+ clab = sys.argv[7]#
+else:
+ ytitle = sys.argv[6]
+ ymin = sys.argv[7]
+ ymax = sys.argv[8]
+ out  = sys.argv[9]
+ clab = sys.argv[10]#
 
 year = "2018"
 lstr = "59.7 fb^{-1} (13 TeV, 2018)" 
@@ -273,5 +298,5 @@ if "2017" in sys.argv[1] :
  year = "2017"
  if "VTR" in sys.argv[1] : lstr = "36.7 fb^{-1} (13 TeV, 2017)"
  else : lstr = "41.5 fb^{-1} (13 TeV, 2017)"
-tf = checkLoadAndRun(year)
+tf = checkLoadAndRun(year,combineleptons=(combinedleptons))
 if tf!=0 : runValidator(tf,ytitle,ymin,ymax,out,lstr,clab)
