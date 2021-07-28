@@ -179,32 +179,40 @@ class TFValidator:
   #c.SaveAs("bin%d.pdf"%b)
   return rms,  list_of_parameters
 
+ def setup(self):
+  self.data_Z = self.fit_file.Get("shapes_prefit/%s_ZEE/data"%(self.cat))
+  self.AddTGraphs(self.data_Z,self.fit_file.Get("shapes_prefit/%s_ZMUMU/data"%(self.cat)))
 
+  self.data_P = self.fit_file.Get("shapes_prefit/photon_cr_%s/data"%(self.year))
+
+  self.TT_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/TOP"%(self.cat))
+  self.TT_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/TOP"%(self.cat)))
+  self.VV_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/VV"%(self.cat))
+  self.VV_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/VV"%(self.cat)))
+  
+  self.QCD_P  = self.fit_file.Get("shapes_prefit/photon_cr_%s/qcd"%(self.year))
  def calcRdata(self,b):
 
-  data_Z = self.fit_file.Get("shapes_prefit/%s_ZEE/data"%(self.cat))
-  self.AddTGraphs(data_Z,self.fit_file.Get("shapes_prefit/%s_ZMUMU/data"%(self.cat)))
-  Zd     = data_Z.GetY()[b-1]
-  Zeu     = data_Z.GetErrorYhigh(b-1)
-  Zed     = data_Z.GetErrorYlow(b-1)
+
+  Zd      = self.data_Z.GetY()[b-1]
+  Zeu     = self.data_Z.GetErrorYhigh(b-1)
+  Zed     = self.data_Z.GetErrorYlow(b-1)
   
-  data_P = self.fit_file.Get("shapes_prefit/photon_cr_%s/data"%(self.year))
-  Pd     = data_P.GetY()[b-1]
-  Peu     = data_P.GetErrorYhigh(b-1)
-  Ped     = data_P.GetErrorYlow(b-1)
+ 
+  Pd     = self.data_P.GetY()[b-1]
+  Peu     = self.data_P.GetErrorYhigh(b-1)
+  Ped     = self.data_P.GetErrorYlow(b-1)
 
   # Remove the backgrounds!
-  TT_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/TOP"%(self.cat))
-  TT_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/TOP"%(self.cat)))
-  ttZ_d = TT_Z.GetBinContent(b)
-  VV_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/VV"%(self.cat))
-  VV_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/VV"%(self.cat)))
-  VVZ_d = VV_Z.GetBinContent(b)
+
+  ttZ_d = self.TT_Z.GetBinContent(b)
+
+  VVZ_d = self.VV_Z.GetBinContent(b)
 
   
   # Remove the backgrounds!
-  QCD_P  = self.fit_file.Get("shapes_prefit/photon_cr_%s/qcd"%(self.year))
-  QCD_d = QCD_P.GetBinContent(b)
+ 
+  QCD_d = self.QCD_P.GetBinContent(b)
 
   Pd -= (QCD_d)
   Zd -= (ttZ_d+VVZ_d)

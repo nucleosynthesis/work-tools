@@ -252,7 +252,9 @@ def checkLoadAndRun(year,combineleptons=False):
 	  tf = plotRatiosCombineFlavour.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
 
 	tf.cat   = sys.argv[1]
-
+	tf.year = year
+	tf.setup()
+	
   else: 
 	if "photon" in sys.argv[3]:
 	  # better check if it makes sense in this case 
@@ -275,8 +277,8 @@ def checkLoadAndRun(year,combineleptons=False):
 	  tf.ZR = sys.argv[4]
 
 	tf.cat   = sys.argv[1]
+	tf.year = year
 
-  tf.year = year
   return tf
 
 combinedleptons = False

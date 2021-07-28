@@ -42,6 +42,7 @@ class TFValidator:
     dE = central-dn[0]
 
     g1.SetPointError(p,xel,xeu,dE/bw,uE/bw)
+    print "Values are -> ", y1,  y2, central/bw,dE/bw,uE/bw
 
  def calcR(self,b):
 
@@ -175,43 +176,59 @@ class TFValidator:
   #c.SaveAs("bin%d.pdf"%b)
   return rms, list_of_parameters
 
+ def setup(self):
+  self.data_Z = self.fit_file.Get("shapes_prefit/%s_ZEE/data"%(self.cat))
+  self.AddTGraphs(self.data_Z,self.fit_file.Get("shapes_prefit/%s_ZMUMU/data"%(self.cat)))
+
+  self.data_W = self.fit_file.Get("shapes_prefit/%s_WENU/data"%(self.cat))
+  self.AddTGraphs(self.data_W,self.fit_file.Get("shapes_prefit/%s_WMUNU/data"%(self.cat)))
+
+  self.TT_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/TOP"%(self.cat))
+  self.TT_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/TOP"%(self.cat)))
+  
+  self.VV_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/VV"%(self.cat))
+  self.VV_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/VV"%(self.cat)))
+
+  self.TT_W  = self.fit_file.Get("shapes_prefit/%s_WENU/TOP"%(self.cat))
+  self.TT_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/TOP"%(self.cat)))
+
+  self.VV_W  = self.fit_file.Get("shapes_prefit/%s_WENU/VV"%(self.cat))
+  self.VV_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/VV"%(self.cat)))
+
+  self.EZll_W  = self.fit_file.Get("shapes_prefit/%s_WENU/EWKZll"%(self.cat))
+  self.EZll_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/EWKZll"%(self.cat)))
+
+  self.QZll_W  = self.fit_file.Get("shapes_prefit/%s_WENU/DY"%(self.cat))
+  self.QZll_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/DY"%(self.cat)))
 
  def calcRdata(self,b):
 
-  data_Z = self.fit_file.Get("shapes_prefit/%s_ZEE/data"%(self.cat))
-  self.AddTGraphs(data_Z,self.fit_file.Get("shapes_prefit/%s_ZMUMU/data"%(self.cat)))
-  Zd     = data_Z.GetY()[b-1]
-  Zeu     = data_Z.GetErrorYhigh(b-1)
-  Zed     = data_Z.GetErrorYlow(b-1)
+
+  Zd     = self.data_Z.GetY()[b-1]
+  Zeu     = self.data_Z.GetErrorYhigh(b-1)
+  Zed     = self.data_Z.GetErrorYlow(b-1)
   
-  data_W = self.fit_file.Get("shapes_prefit/%s_WENU/data"%(self.cat))
-  self.AddTGraphs(data_W,self.fit_file.Get("shapes_prefit/%s_WMUNU/data"%(self.cat)))
-  Wd     = data_W.GetY()[b-1]
-  Weu     = data_W.GetErrorYhigh(b-1)
-  Wed     = data_W.GetErrorYlow(b-1)
+
+  Wd     = self.data_W.GetY()[b-1]
+  Weu     = self.data_W.GetErrorYhigh(b-1)
+  Wed     = self.data_W.GetErrorYlow(b-1)
 
   # Remove the backgrounds!
-  TT_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/TOP"%(self.cat))
-  TT_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/TOP"%(self.cat)))
-  ttZ_d = TT_Z.GetBinContent(b)
-  VV_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/VV"%(self.cat))
-  VV_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/VV"%(self.cat)))
-  VVZ_d = VV_Z.GetBinContent(b)
+
+  ttZ_d = self.TT_Z.GetBinContent(b)
+ 
+  VVZ_d = self.VV_Z.GetBinContent(b)
 
 
   # Remove the backgrounds!
-  TT_W  = self.fit_file.Get("shapes_prefit/%s_WENU/TOP"%(self.cat))
-  TT_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/TOP"%(self.cat)))
-  ttW_d = TT_W.GetBinContent(b)
-  VV_W  = self.fit_file.Get("shapes_prefit/%s_WENU/VV"%(self.cat))
-  VV_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/VV"%(self.cat)))
-  VVW_d = VV_W.GetBinContent(b)
-  EZll_W  = self.fit_file.Get("shapes_prefit/%s_WENU/EWKZll"%(self.cat))
-  EZll_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/EWKZll"%(self.cat)))
-  EZllW_d = EZll_W.GetBinContent(b)
-  QZll_W  = self.fit_file.Get("shapes_prefit/%s_WENU/DY"%(self.cat))
-  QZll_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/DY"%(self.cat)))
-  QZllW_d = QZll_W.GetBinContent(b)
+
+  ttW_d = self.TT_W.GetBinContent(b)
+
+  VVW_d = self.VV_W.GetBinContent(b)
+
+  EZllW_d = self.EZll_W.GetBinContent(b)
+
+  QZllW_d = self.QZll_W.GetBinContent(b)
 
   Wd -= (ttW_d+VVW_d+EZllW_d+QZllW_d)
   Zd -= (ttZ_d+VVZ_d)
