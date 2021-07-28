@@ -21,6 +21,7 @@ class TFValidator:
   self.PR = "photon"
   self.year = "2017"
  def calcR(self,b):
+  
   zq = self.workspace.function("%s_QCDV_%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
   ze = self.workspace.function("%s_EWKV_%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
 

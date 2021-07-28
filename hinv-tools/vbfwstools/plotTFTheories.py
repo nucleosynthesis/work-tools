@@ -264,16 +264,18 @@ def checkLoadAndRun(year,combineleptons=False):
 	  tf = plotRatiosPhotons.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
 	  tf.PProc = sys.argv[3]
 	  tf.PR = sys.argv[5]
+	  tf.ZProc = "Z"+sys.argv[2]
+	  tf.ZR = "Z"+sys.argv[4]
 	else : 
 	  import plotRatios 
 	  tf = plotRatios.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
 	  tf.WProc = sys.argv[3]
 	  tf.WR = sys.argv[5]
+	  tf.ZProc = sys.argv[2]
+	  tf.ZR = sys.argv[4]
 
 	tf.cat   = sys.argv[1]
-	tf.ZProc = sys.argv[2]
 
-  tf.ZR = sys.argv[4]
   tf.year = year
   return tf
 
