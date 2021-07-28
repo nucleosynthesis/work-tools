@@ -178,7 +178,6 @@ class TFValidator:
 
  def calcRdata(self,b):
 
-  print "shapes_prefit/%s_Z%s/data"%(self.cat,self.ZR)
   data_Z = self.fit_file.Get("shapes_prefit/%s_ZEE/data"%(self.cat))
   self.AddTGraphs(data_Z,self.fit_file.Get("shapes_prefit/%s_ZMUMU/data"%(self.cat)))
   Zd     = data_Z.GetY()[b-1]
