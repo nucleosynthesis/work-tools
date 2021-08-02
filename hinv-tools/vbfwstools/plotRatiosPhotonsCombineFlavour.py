@@ -185,14 +185,32 @@ class TFValidator:
 
   self.data_P = self.fit_file.Get("shapes_prefit/photon_cr_%s/data"%(self.year))
 
-  self.TT_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/TOP"%(self.cat))
-  self.TT_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/TOP"%(self.cat)))
-  self.VV_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/VV"%(self.cat))
-  self.VV_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/VV"%(self.cat)))
-  
-  self.QCD_P  = self.fit_file.Get("shapes_prefit/photon_cr_%s/qcd"%(self.year))
- def calcRdata(self,b):
+  backgrounds_ZR = ["TOP","VV","EWKW","WJETS"]
+  backgrounds_P  = ["qcd"]
 
+  self.backgroundZ = self.fit_file.Get("shapes_prefit/%s_ZEE/%s"%(self.cat,backgrounds_ZR[0]))
+  self.backgroundP = self.fit_file.Get("shapes_prefit/photon_cr_%s/%s"%(self.year,backgrounds_P[0]))
+
+  for ibg,bkg in enumerate(backgrounds_ZR): 
+    if ibg==0:
+      tadd = self.fit_file.Get("shapes_prefit/%s_ZMUMU/%s"%(self.cat,backgrounds_ZR[0]))
+      try:
+        self.backgroundZ.Add(tadd)
+      except:  
+        pass 
+    else: 
+      tadd = self.fit_file.Get("shapes_prefit/%s_ZEE/%s"%(self.cat,bkg))
+      try :
+         self.backgroundZ.Add(tadd)
+      except : 
+         pass 
+      tadd2 = self.fit_file.Get("shapes_prefit/%s_ZMUMU/%s"%(self.cat,bkg))
+      try :
+         self.backgroundZ.Add(tadd2)
+      except : 
+         pass 
+  
+ def calcRdata(self,b):
 
   Zd      = self.data_Z.GetY()[b-1]
   Zeu     = self.data_Z.GetErrorYhigh(b-1)
@@ -205,17 +223,11 @@ class TFValidator:
 
   # Remove the backgrounds!
 
-  ttZ_d = self.TT_Z.GetBinContent(b)
+  bZ_d = self.backgroundZ.GetBinContent(b)
+  bP_d = self.backgroundP.GetBinContent(b)
 
-  VVZ_d = self.VV_Z.GetBinContent(b)
-
-  
-  # Remove the backgrounds!
- 
-  QCD_d = self.QCD_P.GetBinContent(b)
-
-  Pd -= (QCD_d)
-  Zd -= (ttZ_d+VVZ_d)
+  Pd -= (bP_d)
+  Zd -= (bZ_d)
   
   rpz = Pd/Zd
   rpz_eu = abs(rpz) * ( ( (Zeu/Zd)**2 + (Peu/Pd)**2)**0.5 )

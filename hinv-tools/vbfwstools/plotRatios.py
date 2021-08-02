@@ -160,24 +160,28 @@ class TFValidator:
   Weu     = data_W.GetErrorYhigh(b-1)
   Wed     = data_W.GetErrorYlow(b-1)
 
-  # Remove the backgrounds!
-  TT_Z  = self.fit_file.Get("shapes_prefit/%s_Z%s/TOP"%(self.cat,self.ZR))
-  ttZ_d = TT_Z.GetBinContent(b)
-  VV_Z  = self.fit_file.Get("shapes_prefit/%s_Z%s/VV"%(self.cat,self.ZR))
-  VVZ_d = VV_Z.GetBinContent(b)
-  
-  # Remove the backgrounds!
-  TT_W  = self.fit_file.Get("shapes_prefit/%s_W%s/TOP"%(self.cat,self.WR))
-  ttW_d = TT_W.GetBinContent(b)
-  VV_W  = self.fit_file.Get("shapes_prefit/%s_W%s/VV"%(self.cat,self.WR))
-  VVW_d = VV_W.GetBinContent(b)
-  EZll_W  = self.fit_file.Get("shapes_prefit/%s_W%s/EWKZll"%(self.cat,self.WR))
-  EZllW_d = EZll_W.GetBinContent(b)
-  QZll_W  = self.fit_file.Get("shapes_prefit/%s_W%s/DY"%(self.cat,self.WR))
-  QZllW_d = QZll_W.GetBinContent(b)
+  backgrounds_ZR = ["TOP","VV","EWKW","WJETS"]
+  backgrounds_WR = ["TOP","VV","QCD","EWKZll","DY"]
 
-  Wd -= (ttW_d+VVW_d+EZllW_d+QZllW_d)
-  Zd -= (ttZ_d+VVZ_d)
+  backgroundZ  = (self.fit_file.Get("shapes_prefit/%s_Z%s/%s"%(self.cat,self.ZR,backgrounds_ZR[0]))).GetBinContent(b)
+  for bkg in backgrounds_ZR[1:]:
+    backgroundZ_h = self.fit_file.Get("shapes_prefit/%s_Z%s/%s"%(self.cat,self.ZR,bkg))
+    try : 
+      backgroundZ += backgroundZ_h.GetBinContent(b)
+    except: 
+      pass 
+
+  backgroundW  = (self.fit_file.Get("shapes_prefit/%s_W%s/%s"%(self.cat,self.WR,backgrounds_WR[0]))).GetBinContent(b)
+
+  for bkg in backgrounds_WR[1:]:
+    backgroundW_h = (self.fit_file.Get("shapes_prefit/%s_W%s/%s"%(self.cat,self.WR,bkg)))
+    try:
+      backgroundW += backgroundW_h.GetBinContent(b)
+    except:
+      pass
+
+  Wd -= (backgroundW)
+  Zd -= (backgroundZ)
   
   rwz = Zd/Wd
   rwz_eu = abs(rwz) * ( ( (Zeu/Zd)**2 + (Weu/Wd)**2)**0.5 )
