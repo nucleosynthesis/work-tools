@@ -1,5 +1,5 @@
+import array
 import ROOT 
-# WORK IN PROGRESS - THE IDEA IS TO TRY TO CREATE photon/Z plots from the workspace that uses the BU datacards
 
 class TFValidator: 
  def __init__(self,input_ws_file,fit_file):
@@ -15,21 +15,47 @@ class TFValidator:
   self.ntoys = 1000
 
   self.cat = "MTR_2017"
-  self.ZProc = "Zmumu"
   self.PProc = "photon"
-  self.ZR = "ZMUMU"
   self.PR = "photon"
   self.year = "2017"
- def calcR(self,b):
+
+ def AddTGraphs(self,g1,g2):
   
-  zq = self.workspace.function("%s_QCDV_%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
-  ze = self.workspace.function("%s_EWKV_%s_bin%d"%(self.cat,self.ZProc,b)).getVal()
+  print "Trying to add graph", g1.GetName(), " to ", g2.GetName()
+  up = array.array('d',[0])
+  dn = array.array('d',[0])
+
+  for p in range(g1.GetN()):
+    y2 = g2.GetY()[p]
+    
+    x  = g1.GetX()[p]
+    y1 = g1.GetY()[p]
+
+    xeu = g1.GetErrorXhigh(p)
+    xel = g1.GetErrorXlow(p)
+
+    bw      = xel+xeu
+    central = (y1+y2)*bw
+    
+    g1.SetPoint(p,x,central/bw)
+    
+    ROOT.RooHistError.instance().getPoissonInterval(int(central),dn,up,1)
+    uE = up[0]-central
+    dE = central-dn[0]
+
+    g1.SetPointError(p,xel,xeu,dE/bw,uE/bw)
+
+ def calcR(self,b):
+  zq_ee = self.workspace.function("%s_QCDV_Zee_bin%d"%(self.cat,b)).getVal()
+  ze_ee = self.workspace.function("%s_EWKV_Zee_bin%d"%(self.cat,b)).getVal()
+  zq_mm = self.workspace.function("%s_QCDV_Zmumu_bin%d"%(self.cat,b)).getVal()
+  ze_mm = self.workspace.function("%s_EWKV_Zmumu_bin%d"%(self.cat,b)).getVal()
 
   pq = self.workspace.function("pmu_cat_vbf_%s_qcd_zjets_ch_qcd_%s_bin%d"%(self.year,self.PProc,b)).getVal()
   pe = self.workspace.function("pmu_cat_vbf_%s_ewk_zjets_ch_ewk_%s_bin%d"%(self.year,self.PProc,b)).getVal()
 
   #print "%sQCDV_Z%s_bin%d"%(self.cat,self.ZProc,b), "%sQCDV_W%s_bin%d"%(self.cat,self.WProc,b)
-  return (pe+pq)/(ze+zq)
+  return (pe+pq)/(ze_ee+zq_ee+zq_mm+ze_mm)
 
 
  def returnRMS(self,b,includeStat=False, includeAll=False): 
@@ -37,11 +63,16 @@ class TFValidator:
   r2=0
   mean=0 
   
-  allpars  = self.workspace.function("%s_QCDV_%s_bin%d"%(self.cat,self.ZProc,b)).getParameters(ROOT.RooArgSet())
-  allpars2 = self.workspace.function("%s_EWKV_%s_bin%d"%(self.cat,self.ZProc,b)).getParameters(ROOT.RooArgSet())
+  allpars   = self.workspace.function("%s_QCDV_Zee_bin%d"%(self.cat,b)).getParameters(ROOT.RooArgSet())
+  allpars2  = self.workspace.function("%s_EWKV_Zee_bin%d"%(self.cat,b)).getParameters(ROOT.RooArgSet())
+  allpars2a = self.workspace.function("%s_QCDV_Zmumu_bin%d"%(self.cat,b)).getParameters(ROOT.RooArgSet())
+  allpars2b = self.workspace.function("%s_EWKV_Zmumu_bin%d"%(self.cat,b)).getParameters(ROOT.RooArgSet())
   allpars3 = self.workspace.function("pmu_cat_vbf_%s_qcd_zjets_ch_qcd_%s_bin%d"%(self.year,self.PProc,b)).getParameters(ROOT.RooArgSet())
   allpars4 = self.workspace.function("pmu_cat_vbf_%s_ewk_zjets_ch_ewk_%s_bin%d"%(self.year,self.PProc,b)).getParameters(ROOT.RooArgSet())
+  
   allpars.add(allpars2)
+  allpars.add(allpars2a)
+  allpars.add(allpars2b)
   allpars.add(allpars3)
   allpars.add(allpars4)
   
@@ -148,32 +179,55 @@ class TFValidator:
   #c.SaveAs("bin%d.pdf"%b)
   return rms,  list_of_parameters
 
+ def setup(self):
+  self.data_Z = self.fit_file.Get("shapes_prefit/%s_ZEE/data"%(self.cat))
+  self.AddTGraphs(self.data_Z,self.fit_file.Get("shapes_prefit/%s_ZMUMU/data"%(self.cat)))
 
- def calcRdata(self,b):
-
-  print "shapes_prefit/%s_%s/data"%(self.cat,self.ZR)
-  data_Z = self.fit_file.Get("shapes_prefit/%s_%s/data"%(self.cat,self.ZR))
-  Zd     = data_Z.GetY()[b-1]
-  Zeu     = data_Z.GetErrorYhigh(b-1)
-  Zed     = data_Z.GetErrorYlow(b-1)
-  
-  data_P = self.fit_file.Get("shapes_prefit/photon_cr_%s/data"%(self.year))
-  Pd     = data_P.GetY()[b-1]
-  Peu     = data_P.GetErrorYhigh(b-1)
-  Ped     = data_P.GetErrorYlow(b-1)
+  self.data_P = self.fit_file.Get("shapes_prefit/photon_cr_%s/data"%(self.year))
 
   backgrounds_ZR = ["TOP","VV","EWKW","WJETS"]
-  # Remove the backgrounds!
-  backgroundZ  = (self.fit_file.Get("shapes_prefit/%s_%s/%s"%(self.cat,self.ZR,backgrounds_ZR[0]))).GetBinContent(b)
-  for bkg in backgrounds_ZR[1:]:
-    backgroundZ += (self.fit_file.Get("shapes_prefit/%s_%s/%s"%(self.cat,self.ZR,bkg))).GetBinContent(b)
-  
-  # Remove the backgrounds!
-  QCD_P  = self.fit_file.Get("shapes_prefit/photon_cr_%s/qcd"%(self.year))
-  QCD_d = QCD_P.GetBinContent(b)
+  backgrounds_P  = ["qcd"]
 
-  Pd -= (QCD_d)
-  Zd -= (backgroundZ)
+  self.backgroundZ = self.fit_file.Get("shapes_prefit/%s_ZEE/%s"%(self.cat,backgrounds_ZR[0]))
+  self.backgroundP = self.fit_file.Get("shapes_prefit/photon_cr_%s/%s"%(self.year,backgrounds_P[0]))
+
+  for ibg,bkg in enumerate(backgrounds_ZR): 
+    if ibg==0:
+      tadd = self.fit_file.Get("shapes_prefit/%s_ZMUMU/%s"%(self.cat,backgrounds_ZR[0]))
+      try:
+        self.backgroundZ.Add(tadd)
+      except:  
+        pass 
+    else: 
+      tadd = self.fit_file.Get("shapes_prefit/%s_ZEE/%s"%(self.cat,bkg))
+      try :
+         self.backgroundZ.Add(tadd)
+      except : 
+         pass 
+      tadd2 = self.fit_file.Get("shapes_prefit/%s_ZMUMU/%s"%(self.cat,bkg))
+      try :
+         self.backgroundZ.Add(tadd2)
+      except : 
+         pass 
+  
+ def calcRdata(self,b):
+
+  Zd      = self.data_Z.GetY()[b-1]
+  Zeu     = self.data_Z.GetErrorYhigh(b-1)
+  Zed     = self.data_Z.GetErrorYlow(b-1)
+  
+ 
+  Pd     = self.data_P.GetY()[b-1]
+  Peu     = self.data_P.GetErrorYhigh(b-1)
+  Ped     = self.data_P.GetErrorYlow(b-1)
+
+  # Remove the backgrounds!
+
+  bZ_d = self.backgroundZ.GetBinContent(b)
+  bP_d = self.backgroundP.GetBinContent(b)
+
+  Pd -= (bP_d)
+  Zd -= (bZ_d)
   
   rpz = Pd/Zd
   rpz_eu = abs(rpz) * ( ( (Zeu/Zd)**2 + (Peu/Pd)**2)**0.5 )
