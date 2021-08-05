@@ -183,23 +183,51 @@ class TFValidator:
   self.data_W = self.fit_file.Get("shapes_prefit/%s_WENU/data"%(self.cat))
   self.AddTGraphs(self.data_W,self.fit_file.Get("shapes_prefit/%s_WMUNU/data"%(self.cat)))
 
-  self.TT_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/TOP"%(self.cat))
-  self.TT_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/TOP"%(self.cat)))
+  backgrounds_ZR = ["TOP","VV","EWKW","WJETS"]
+  backgrounds_WR = ["TOP","VV","QCD","EWKZll","DY"]
+
+
+  self.backgroundZ = self.fit_file.Get("shapes_prefit/%s_ZEE/%s"%(self.cat,backgrounds_ZR[0]))
+  self.backgroundW = self.fit_file.Get("shapes_prefit/%s_WENU/%s"%(self.cat,backgrounds_WR[0]))
+
+  for ibg,bkg in enumerate(backgrounds_ZR): 
+    if ibg==0:
+      tadd = self.fit_file.Get("shapes_prefit/%s_ZMUMU/%s"%(self.cat,backgrounds_ZR[0]))
+      try:
+        self.backgroundZ.Add(tadd)
+      except:  
+        pass 
+    else: 
+      tadd = self.fit_file.Get("shapes_prefit/%s_ZEE/%s"%(self.cat,bkg))
+      try :
+         self.backgroundZ.Add(tadd)
+      except : 
+         pass 
+      tadd2 = self.fit_file.Get("shapes_prefit/%s_ZMUMU/%s"%(self.cat,bkg))
+      try :
+         self.backgroundZ.Add(tadd2)
+      except : 
+         pass 
   
-  self.VV_Z  = self.fit_file.Get("shapes_prefit/%s_ZEE/VV"%(self.cat))
-  self.VV_Z.Add(self.fit_file.Get("shapes_prefit/%s_ZMUMU/VV"%(self.cat)))
-
-  self.TT_W  = self.fit_file.Get("shapes_prefit/%s_WENU/TOP"%(self.cat))
-  self.TT_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/TOP"%(self.cat)))
-
-  self.VV_W  = self.fit_file.Get("shapes_prefit/%s_WENU/VV"%(self.cat))
-  self.VV_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/VV"%(self.cat)))
-
-  self.EZll_W  = self.fit_file.Get("shapes_prefit/%s_WENU/EWKZll"%(self.cat))
-  self.EZll_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/EWKZll"%(self.cat)))
-
-  self.QZll_W  = self.fit_file.Get("shapes_prefit/%s_WENU/DY"%(self.cat))
-  self.QZll_W.Add(self.fit_file.Get("shapes_prefit/%s_WMUNU/DY"%(self.cat)))
+  for ibg,bkg in enumerate(backgrounds_WR): 
+    if ibg==0:
+      tadd = self.fit_file.Get("shapes_prefit/%s_WMUNU/%s"%(self.cat,backgrounds_WR[0]))
+      try:
+        self.backgroundW.Add(tadd)
+      except:  
+        pass 
+    else: 
+      tadd = self.fit_file.Get("shapes_prefit/%s_WENU/%s"%(self.cat,bkg))
+      try :
+         self.backgroundW.Add(tadd)
+      except : 
+         pass 
+      tadd2 = self.fit_file.Get("shapes_prefit/%s_WMUNU/%s"%(self.cat,bkg))
+      try :
+         self.backgroundW.Add(tadd2)
+      except : 
+         pass 
+         
 
  def calcRdata(self,b):
 
@@ -215,23 +243,11 @@ class TFValidator:
 
   # Remove the backgrounds!
 
-  ttZ_d = self.TT_Z.GetBinContent(b)
- 
-  VVZ_d = self.VV_Z.GetBinContent(b)
+  bZ_d = self.backgroundZ.GetBinContent(b)
+  bW_d = self.backgroundW.GetBinContent(b)
 
-
-  # Remove the backgrounds!
-
-  ttW_d = self.TT_W.GetBinContent(b)
-
-  VVW_d = self.VV_W.GetBinContent(b)
-
-  EZllW_d = self.EZll_W.GetBinContent(b)
-
-  QZllW_d = self.QZll_W.GetBinContent(b)
-
-  Wd -= (ttW_d+VVW_d+EZllW_d+QZllW_d)
-  Zd -= (ttZ_d+VVZ_d)
+  Wd -= (bW_d)
+  Zd -= (bZ_d)
   
   rwz = Zd/Wd
   rwz_eu = abs(rwz) * ( ( (Zeu/Zd)**2 + (Weu/Wd)**2)**0.5 )

@@ -162,19 +162,18 @@ class TFValidator:
   Peu     = data_P.GetErrorYhigh(b-1)
   Ped     = data_P.GetErrorYlow(b-1)
 
+  backgrounds_ZR = ["TOP","VV","EWKW","WJETS"]
   # Remove the backgrounds!
-  TT_Z  = self.fit_file.Get("shapes_prefit/%s_%s/TOP"%(self.cat,self.ZR))
-  ttZ_d = TT_Z.GetBinContent(b)
-  VV_Z  = self.fit_file.Get("shapes_prefit/%s_%s/VV"%(self.cat,self.ZR))
-  VVZ_d = VV_Z.GetBinContent(b)
-
+  backgroundZ  = (self.fit_file.Get("shapes_prefit/%s_%s/%s"%(self.cat,self.ZR,backgrounds_ZR[0]))).GetBinContent(b)
+  for bkg in backgrounds_ZR[1:]:
+    backgroundZ += (self.fit_file.Get("shapes_prefit/%s_%s/%s"%(self.cat,self.ZR,bkg))).GetBinContent(b)
   
   # Remove the backgrounds!
   QCD_P  = self.fit_file.Get("shapes_prefit/photon_cr_%s/qcd"%(self.year))
   QCD_d = QCD_P.GetBinContent(b)
 
   Pd -= (QCD_d)
-  Zd -= (ttZ_d+VVZ_d)
+  Zd -= (backgroundZ)
   
   rpz = Pd/Zd
   rpz_eu = abs(rpz) * ( ( (Zeu/Zd)**2 + (Peu/Pd)**2)**0.5 )
