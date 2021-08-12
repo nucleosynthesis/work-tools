@@ -25,7 +25,7 @@ def getHisto1D(gr):
 
 def getObject(string):
   fi,loc = string.split(":")
-  print  "getting object", loc, " from", fi
+  print("getting object", loc, " from", fi)
   tfi=ROOT.TFile.Open(fi)
   obj = tfi.Get(loc)
   if obj.InheritsFrom(ROOT.TGraph.Class()): obj = getHisto1D(obj)
