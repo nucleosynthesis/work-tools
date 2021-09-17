@@ -98,13 +98,14 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	rata.SetLineColor(4)
 	rata.SetLineWidth(3)
 
-	c = ROOT.TCanvas("c","c",960,640)
+	c = ROOT.TCanvas("c","c",860,640)
 
 	
-	lat = ROOT.TLegend(0.76,0.62,0.99,0.89)
+	lat = ROOT.TLegend(0.73,0.6,0.99,0.89)
+	lat.SetTextSize(0.032)
 	lat.SetBorderSize(0)
 	lat.SetTextFont(42)
-	lat.AddEntry(data,"Data - bkg","PE")
+	lat.AddEntry(data,"Data - bkg.","PE")
 	lat.AddEntry(rata,"Prediction","L")
 	lat.AddEntry(ratae_nostat, "#pm Th. uncert.","F")
 	lat.AddEntry(ratae_noexp,"#pm MC stat. uncert.","F")
@@ -117,12 +118,12 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	pad1.SetTicky()
 	pad1.SetTickx()
 	
-	pad1.SetRightMargin(0.25)
+	pad1.SetRightMargin(0.28)
 	pad1.SetLeftMargin(0.11)
 	pad1.SetTopMargin(0.02)
 	pad1.SetBottomMargin(0.02)
 
-	pad2.SetRightMargin(0.25)
+	pad2.SetRightMargin(0.28)
 	pad2.SetLeftMargin(0.11)
 	pad2.SetTopMargin(0.02)
 	pad2.SetBottomMargin(0.32)
@@ -131,8 +132,9 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 
 	ratae.SetTitle("")
 	ratae.GetYaxis().SetNdivisions(510)
-	ratae.GetYaxis().SetTitleSize(0.06)
-	ratae.GetYaxis().SetTitleOffset(0.7)
+	ratae.GetYaxis().SetTitleSize(0.08)
+	ratae.GetYaxis().SetLabelSize(0.05)
+	ratae.GetYaxis().SetTitleOffset(0.66)
 	ratae.GetXaxis().SetTitleSize(0.0)
 	ratae.GetXaxis().SetLabelSize(0.0)
 
@@ -182,13 +184,13 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	rata_r.SetTitle("")
 	rata_r.GetYaxis().SetNdivisions(010)
 	rata_r.GetXaxis().SetRangeUser(rata_r.GetXaxis().GetXmin(),rata_r.GetXaxis().GetXmax())
-	rata_r.GetXaxis().SetTitleSize(0.12)
+	rata_r.GetXaxis().SetTitleSize(0.125)
 	rata_r.GetXaxis().SetTitleOffset(1.1)
 	rata_r.GetYaxis().SetTitleOffset(0.5)
-	rata_r.GetXaxis().SetLabelSize(0.08)
-	rata_r.GetYaxis().SetTitleSize(0.08)
-	rata_r.GetYaxis().SetLabelSize(0.08)
-	rata_r.GetYaxis().SetTitle("(Data - bkg)/Prediction")
+	rata_r.GetXaxis().SetLabelSize(0.09)
+	rata_r.GetYaxis().SetTitleSize(0.09)
+	rata_r.GetYaxis().SetLabelSize(0.09)
+	rata_r.GetYaxis().SetTitle("(Data - bkg.)/Prediction")
 	rata_r.SetMaximum(data_r_skipLastBin.GetYaxis().GetXmax())
 	rata_r.SetMinimum(max([data_r_skipLastBin.GetYaxis().GetXmin(),0]))
 	
@@ -216,10 +218,12 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	tlat.SetTextFont(42)
 	tlat.SetNDC()
 	#tlat.DrawLatex(0.11,0.92,"#bf{CMS} #it{Preliminary}")
+	tlat.SetTextSize(0.054)
 	tlat.DrawLatex(0.11,0.92,"#bf{CMS}")
-	tlat.DrawLatex(0.44,0.92,lstr)
-	tlat.SetTextSize(0.04)
-	tlat.DrawLatex(0.14,0.83,clab)
+	tlat.SetTextSize(0.048)
+	tlat.DrawLatex(0.47,0.92,lstr)
+	tlat.SetTextSize(0.045)
+	tlat.DrawLatex(0.145,0.83,clab)
 
 	c.RedrawAxis()
 
@@ -297,10 +301,10 @@ else:
  clab = sys.argv[10]#
 
 year = "2018"
-lstr = "59.7 fb^{-1} (13 TeV, 2018)" 
+lstr = "59.7 fb^{-1} (13 TeV)" 
 if "2017" in sys.argv[1] : 
  year = "2017"
- if "VTR" in sys.argv[1] : lstr = "36.7 fb^{-1} (13 TeV, 2017)"
- else : lstr = "41.5 fb^{-1} (13 TeV, 2017)"
+ if "VTR" in sys.argv[1] : lstr = "36.7 fb^{-1} (13 TeV)"
+ else : lstr = "41.5 fb^{-1} (13 TeV)"
 tf = checkLoadAndRun(year,combineleptons=(combinedleptons))
 if tf!=0 : runValidator(tf,ytitle,ymin,ymax,out,lstr,clab)
