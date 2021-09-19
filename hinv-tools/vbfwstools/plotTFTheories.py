@@ -42,7 +42,7 @@ def getAveragePull(gr):
 	  mean += (average(gr.GetErrorYhigh(p),gr.GetErrorYlow(p)))
 	return mean/Npoints
 
-def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab): 
+def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0): 
 	fdummy = ROOT.TFile.Open("%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
 	hdummy = fdummy.Get("shapes_prefit/%s_SR/qqH_hinv"%sys.argv[1])
 	ddummy = fdummy.Get("shapes_prefit/%s_SR/data"%sys.argv[1])
@@ -98,11 +98,12 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	rata.SetLineColor(4)
 	rata.SetLineWidth(3)
 
-	c = ROOT.TCanvas("c","c",860,640)
+	c = ROOT.TCanvas("c","c",820,820)
 
 	
-	lat = ROOT.TLegend(0.73,0.6,0.99,0.89)
-	lat.SetTextSize(0.032)
+	if pos==0: 
+	 lat = ROOT.TLegend(0.16,0.05,0.48,0.32)
+	lat.SetTextSize(0.042)
 	lat.SetBorderSize(0)
 	lat.SetTextFont(42)
 	lat.AddEntry(data,"Data - bkg.","PE")
@@ -111,22 +112,20 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	lat.AddEntry(ratae_noexp,"#pm MC stat. uncert.","F")
 	lat.AddEntry(ratae, "#pm expt.","F")
 	
-	pad1 = ROOT.TPad("pad1","pad1",0,0.32,1,0.9)
-	pad2 = ROOT.TPad("pad2","pad2",0,0,1,0.31)
+	pad1 = ROOT.TPad("pad1","pad1",0,0.3,1,0.95)
+	pad2 = ROOT.TPad("pad2","pad2",0,0.0,1,0.30)
 	pad1.Draw()
-	pad1.SetBottomMargin(0.05)
 	pad1.SetTicky()
 	pad1.SetTickx()
 	
-	pad1.SetRightMargin(0.28)
-	pad1.SetLeftMargin(0.11)
-	pad1.SetTopMargin(0.02)
-	pad1.SetBottomMargin(0.02)
-
-	pad2.SetRightMargin(0.28)
-	pad2.SetLeftMargin(0.11)
-	pad2.SetTopMargin(0.02)
-	pad2.SetBottomMargin(0.32)
+	pad1.SetBottomMargin(0.015)
+	pad1.SetTopMargin(0.05)
+	pad2.SetTopMargin(0.038)
+	pad2.SetBottomMargin(0.36)
+	pad1.SetLeftMargin(0.13)
+	pad2.SetLeftMargin(0.13)
+	pad1.SetRightMargin(0.06)
+	pad2.SetRightMargin(0.06)
 
 	pad1.cd()
 
@@ -212,18 +211,20 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab):
 	pad2.SetTickx()
 	pad2.RedrawAxis()
 
-	c.cd()
+	pad1.cd()
 	lat.Draw()
+	c.cd()
 	tlat = ROOT.TLatex()
 	tlat.SetTextFont(42)
 	tlat.SetNDC()
 	#tlat.DrawLatex(0.11,0.92,"#bf{CMS} #it{Preliminary}")
-	tlat.SetTextSize(0.054)
-	tlat.DrawLatex(0.11,0.92,"#bf{CMS}")
-	tlat.SetTextSize(0.048)
-	tlat.DrawLatex(0.47,0.92,lstr)
-	tlat.SetTextSize(0.045)
-	tlat.DrawLatex(0.145,0.83,clab)
+	tlat.SetTextSize(0.042)
+	tlat.DrawLatex(0.128,0.93,"#bf{CMS}")
+	tlat.SetTextSize(0.042)
+	tlat.DrawLatex(0.18,0.83,clab)
+	tlat.SetTextSize(0.032)
+	#tlat.SetTextAlign(32)
+	tlat.DrawLatex(0.71,0.93,lstr)
 
 	c.RedrawAxis()
 
@@ -300,6 +301,7 @@ else:
  out  = sys.argv[9]
  clab = sys.argv[10]#
 
+pos=0
 year = "2018"
 lstr = "59.7 fb^{-1} (13 TeV)" 
 if "2017" in sys.argv[1] : 
@@ -307,4 +309,4 @@ if "2017" in sys.argv[1] :
  if "VTR" in sys.argv[1] : lstr = "36.7 fb^{-1} (13 TeV)"
  else : lstr = "41.5 fb^{-1} (13 TeV)"
 tf = checkLoadAndRun(year,combineleptons=(combinedleptons))
-if tf!=0 : runValidator(tf,ytitle,ymin,ymax,out,lstr,clab)
+if tf!=0 : runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos)
