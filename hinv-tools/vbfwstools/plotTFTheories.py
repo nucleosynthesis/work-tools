@@ -103,7 +103,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	
 	if pos==0: 
 	 lat = ROOT.TLegend(0.16,0.05,0.48,0.32)
-	lat.SetTextSize(0.042)
+	lat.SetTextSize(0.044)
 	lat.SetBorderSize(0)
 	lat.SetTextFont(42)
 	lat.AddEntry(data,"Data - bkg.","PE")
@@ -112,15 +112,15 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	lat.AddEntry(ratae_noexp,"#pm MC stat. uncert.","F")
 	lat.AddEntry(ratae, "#pm expt.","F")
 	
-	pad1 = ROOT.TPad("pad1","pad1",0,0.3,1,0.95)
+	pad1 = ROOT.TPad("pad1","pad1",0,0.305,1,0.95)
 	pad2 = ROOT.TPad("pad2","pad2",0,0.0,1,0.30)
 	pad1.Draw()
 	pad1.SetTicky()
 	pad1.SetTickx()
 	
-	pad1.SetBottomMargin(0.015)
+	pad1.SetBottomMargin(0.0175)
 	pad1.SetTopMargin(0.05)
-	pad2.SetTopMargin(0.038)
+	pad2.SetTopMargin(0.044)
 	pad2.SetBottomMargin(0.36)
 	pad1.SetLeftMargin(0.13)
 	pad2.SetLeftMargin(0.13)
@@ -187,7 +187,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	rata_r.GetXaxis().SetTitleOffset(1.1)
 	rata_r.GetYaxis().SetTitleOffset(0.5)
 	rata_r.GetXaxis().SetLabelSize(0.09)
-	rata_r.GetYaxis().SetTitleSize(0.09)
+	rata_r.GetYaxis().SetTitleSize(0.095)
 	rata_r.GetYaxis().SetLabelSize(0.09)
 	rata_r.GetYaxis().SetTitle("(Data - bkg.)/Prediction")
 	rata_r.SetMaximum(data_r_skipLastBin.GetYaxis().GetXmax())
