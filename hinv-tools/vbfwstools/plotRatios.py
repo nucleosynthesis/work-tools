@@ -21,6 +21,32 @@ class TFValidator:
   self.WR = "MUNU"
   
   self.year = "2017"
+ 
+ def setPostFit(self,b):
+
+  fit_res = self.fit_file.Get("fit_b")
+  floatingpars = fit_res.floatParsFinal()
+
+  vetonames = ["QCDZ_SR_bin","TF_syst_fnlo_SF","ewkqcdratio_stat","TR_fnlo_SF","NLOSF_","W_SR_freebin"]
+  allpars = self.workspace.allVars()
+  iter = allpars.createIterator()
+  while 1: 
+   tpar = iter.Next() # allpars.at(n)
+   if tpar == None : break
+   pn = tpar.GetName()
+       
+   veto = False
+   for v in vetonames: 
+     if v in tpar.GetName(): 
+     	veto=True 
+    	break
+   if veto: continue 
+   
+   fitval = floatingpars.find(pn)
+   if fitval == None: continue 
+   bf = fitval.getVal()
+   self.workspace.var(pn).setVal(bf)
+   print "Setting default Parameter value ", pn,bf
 
  def calcR(self,b):
 

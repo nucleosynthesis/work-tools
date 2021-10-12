@@ -17,6 +17,33 @@ class TFValidator:
   self.cat = "MTR_2017"
   self.year = "2017"
 
+ def setPostFit(self,b):
+
+  fit_res = self.fit_file.Get("fit_b")
+  floatingpars = fit_res.floatParsFinal()
+
+  vetonames = ["QCDZ_SR_bin","TF_syst_fnlo_SF","ewkqcdratio_stat","TR_fnlo_SF","NLOSF_","W_SR_freebin"]
+  allpars = self.workspace.allVars()
+  iter = allpars.createIterator()
+  while 1: 
+   tpar = iter.Next() # allpars.at(n)
+   if tpar == None : break
+   pn = tpar.GetName()
+       
+   veto = False
+   for v in vetonames: 
+     if v in tpar.GetName(): 
+     	veto=True 
+    	break
+   if veto: continue 
+   
+   fitval = floatingpars.find(pn)
+   if fitval == None: continue 
+   bf = fitval.getVal()
+   self.workspace.var(pn).setVal(bf)
+   print "Setting default Parameter value ", pn,bf
+  
+
  def AddTGraphs(self,g1,g2):
   
   print "Trying to add graph", g1.GetName(), " to ", g2.GetName()
@@ -57,7 +84,23 @@ class TFValidator:
 
   #print "%sQCDV_Z%s_bin%d"%(self.cat,self.ZProc,b), "%sQCDV_W%s_bin%d"%(self.cat,self.WProc,b)
   return (ze_ee+zq_ee+ze_mm+zq_mm)/(we_e+wq_e+we_m+wq_m)
+ 
+ """
+ def calcRPostFit(self,b):
 
+  zq_ee = self.workspace.function("%s_QCDV_Zee_bin%d"%(self.cat,b)).getVal()
+  ze_ee = self.workspace.function("%s_EWKV_Zee_bin%d"%(self.cat,b)).getVal()
+  zq_mm = self.workspace.function("%s_QCDV_Zmumu_bin%d"%(self.cat,b)).getVal()
+  ze_mm = self.workspace.function("%s_EWKV_Zmumu_bin%d"%(self.cat,b)).getVal()
+  wq_e  = self.workspace.function("%s_QCDV_Wenu_bin%d"%(self.cat,b)).getVal()
+  we_e  = self.workspace.function("%s_EWKV_Wenu_bin%d"%(self.cat,b)).getVal()
+  wq_m  = self.workspace.function("%s_QCDV_Wmunu_bin%d"%(self.cat,b)).getVal()
+  we_m  = self.workspace.function("%s_EWKV_Wmunu_bin%d"%(self.cat,b)).getVal()
+
+  #print "%sQCDV_Z%s_bin%d"%(self.cat,self.ZProc,b), "%sQCDV_W%s_bin%d"%(self.cat,self.WProc,b)
+  return (ze_ee+zq_ee+ze_mm+zq_mm)/(we_e+wq_e+we_m+wq_m)
+
+ """
 
  def returnRMS(self,b,includeStat=False, includeAll=False): 
 
