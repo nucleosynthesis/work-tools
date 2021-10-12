@@ -84,6 +84,20 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	  print " ... relative uncert = ", e_nostat/rth 
 
 
+        rata_pf = hdummy.Clone(); rata_pf.SetName("ratio_postfit")
+	rata_pf.SetLineColor(2)
+
+	for b in range(1,nbins+1):
+	  tf.setPostFit(b)
+	  rat_postfit = tf.calcR(b)
+	  rata_pf.SetBinContent(b,rat_postfit)
+
+	rata_pf.SetLineColor(2)
+	rata_pf.SetLineWidth(3)
+	rata_pf_rat = rata_pf.Clone()
+	rata_pf_rat.SetName("ratio_postfit_ratio")
+	rata_pf_rat.Divide(rata)
+
 	data.SetMarkerStyle(20)
 	data.SetMarkerSize(1.2)
 	data.SetLineWidth(2)
@@ -107,7 +121,8 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	lat.SetBorderSize(0)
 	lat.SetTextFont(42)
 	lat.AddEntry(data,"Data - bkg.","PE")
-	lat.AddEntry(rata,"Prediction","L")
+	lat.AddEntry(rata_pf,"Prediction (postfit)","L")
+	lat.AddEntry(rata,"Prediction (prefit)","L")
 	lat.AddEntry(ratae_nostat, "#pm Th. uncert.","F")
 	lat.AddEntry(ratae_noexp,"#pm MC stat. uncert.","F")
 	lat.AddEntry(ratae, "#pm expt.","F")
@@ -151,6 +166,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	ratae_noexp.Draw("E2same")
 	ratae_nostat.Draw("E2same")
 	rata.Draw("histsame")
+	rata_pf.Draw("histsame")
 	data.Draw("PE0same")
 
 	pad1.RedrawAxis()
@@ -200,6 +216,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	ratae_noexp_r.Draw("E2same")
 	ratae_nostat_r.Draw("E2same")
 	rata_r.Draw("histsame")
+	rata_pf_rat.Draw("histsame")
 	data_r.Draw("PE0same")
 
 	latex_small = ROOT.TLatex()
