@@ -257,7 +257,8 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 
 
 # inputs are cat ZProc, WProc, ZR, WR, ytitle, ymin, ymax, outname
-def checkLoadAndRun(year,combineleptons=False): 
+def checkLoadAndRun(year,combineleptons=False):
+  file_name = "%s/fitDiagnostics%s_CRonlyFit.root"%(BASE_DIRECTORY,sys.argv[1])
   if combineleptons:
 	if "photon" in sys.argv[2]:
 	  # better check if it makes sense in this case 
@@ -266,12 +267,12 @@ def checkLoadAndRun(year,combineleptons=False):
 	    return 0 
 	    #sys.exit("No photon CR in VTR, skipping")
 	  import plotRatiosPhotonsCombineFlavour
-	  tf = plotRatiosPhotonsCombineFlavour.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
+	  tf = plotRatiosPhotonsCombineFlavour.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),file_name)
 
 	else : 
 	  print "New thing"
 	  import plotRatiosCombineFlavour
-	  tf = plotRatiosCombineFlavour.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
+	  tf = plotRatiosCombineFlavour.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),file_name)
 
 	tf.cat   = sys.argv[1]
 	tf.year = year
@@ -285,14 +286,14 @@ def checkLoadAndRun(year,combineleptons=False):
 	    return 0 
 	    #sys.exit("No photon CR in VTR, skipping")
 	  import plotRatiosPhotons
-	  tf = plotRatiosPhotons.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
+	  tf = plotRatiosPhotons.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),file_name)
 	  tf.PProc = sys.argv[3]
 	  tf.PR = sys.argv[5]
 	  tf.ZProc = "Z"+sys.argv[2]
 	  tf.ZR = "Z"+sys.argv[4]
 	else : 
 	  import plotRatios 
-	  tf = plotRatios.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),"%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
+	  tf = plotRatios.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),file_name)
 	  tf.WProc = sys.argv[3]
 	  tf.WR = sys.argv[5]
 	  tf.ZProc = sys.argv[2]
