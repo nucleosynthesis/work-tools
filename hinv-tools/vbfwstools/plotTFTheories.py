@@ -122,7 +122,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	lat.SetTextFont(42)
 	lat.AddEntry(data,"Data - bkg.","PE")
 	lab = tf.cat.replace("_"," ")
-	lat.AddEntry(rata_pf,"Prediction (%s CR-postfit)"%(lab),"L")
+	lat.AddEntry(rata_pf,"Prediction (CR-postfit)","L")
 	lat.AddEntry(rata,"Prediction (prefit)","L")
 	lat.AddEntry(ratae_nostat, "#pm Th. uncert.","F")
 	lat.AddEntry(ratae_noexp,"#pm MC stat. uncert.","F")
@@ -259,7 +259,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 
 # inputs are cat ZProc, WProc, ZR, WR, ytitle, ymin, ymax, outname
 def checkLoadAndRun(year,combineleptons=False):
-  file_name = "%s/fitDiagnostics%s_CRonlyFit.root"%(BASE_DIRECTORY,sys.argv[1])
+  file_name = "%s/fitDiagnosticsCRonlyFit.root"%(BASE_DIRECTORY)
   if combineleptons:
 	if "photon" in sys.argv[2]:
 	  # better check if it makes sense in this case 
