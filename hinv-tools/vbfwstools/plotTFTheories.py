@@ -241,7 +241,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	#tlat.DrawLatex(0.11,0.92,"#bf{CMS} #it{Preliminary}")
 	tlat.SetTextSize(0.042)
 	if isPublished : tlat.DrawLatex(0.128,0.93,"#bf{CMS}")
-	else : tlat.DrawLatex(0.128,0.93,"#bf{CMS} #it{Preliminary}")
+	else : tlat.DrawLatex(0.128,0.93,"#bf{CMS} #it{Supplementary}")
 	tlat.SetTextSize(0.042)
 	tlat.DrawLatex(0.18,0.83,clab)
 	tlat.SetTextSize(0.032)
