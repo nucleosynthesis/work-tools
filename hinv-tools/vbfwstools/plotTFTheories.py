@@ -14,6 +14,9 @@ tf.WProc = "munu"
 tf.ZR = "MUMU"
 tf.WR = "MUNU"
 """
+
+isPublished = True
+
 def RatioD(a,b):
   ret = a.Clone(); ret.SetName(a.GetName()+"_"+b.GetName())
   for i in range(b.GetNbinsX()): 
@@ -237,7 +240,8 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	tlat.SetNDC()
 	#tlat.DrawLatex(0.11,0.92,"#bf{CMS} #it{Preliminary}")
 	tlat.SetTextSize(0.042)
-	tlat.DrawLatex(0.128,0.93,"#bf{CMS}")
+	if isPublished : tlat.DrawLatex(0.128,0.93,"#bf{CMS}")
+	else : tlat.DrawLatex(0.128,0.93,"#bf{CMS} #it{Preliminary}")
 	tlat.SetTextSize(0.042)
 	tlat.DrawLatex(0.18,0.83,clab)
 	tlat.SetTextSize(0.032)
@@ -280,6 +284,7 @@ def checkLoadAndRun(year,combineleptons=False):
 	tf.setup()
 	
   else: 
+  	isPublished=False
 	if "photon" in sys.argv[3]:
 	  # better check if it makes sense in this case 
 	  if "VTR" in sys.argv[1]: 
