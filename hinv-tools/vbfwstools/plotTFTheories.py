@@ -119,16 +119,19 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 
 	
 	if pos==0: 
-	 lat = ROOT.TLegend(0.16,0.05,0.48,0.32)
+	 lat = ROOT.TLegend(0.16,0.05,0.68,0.28)
+	 leg.SetNColumns(2)
+
+	lab = tf.cat.replace("_"," ")
+	
 	lat.SetTextSize(0.044)
 	lat.SetBorderSize(0)
 	lat.SetTextFont(42)
 	lat.AddEntry(data,"Data - bkg.","PE")
-	lab = tf.cat.replace("_"," ")
-	lat.AddEntry(rata_pf,"Prediction (CR-postfit)","L")
-	lat.AddEntry(rata,"Prediction (prefit)","L")
 	lat.AddEntry(ratae_nostat, "#pm Th. uncert.","F")
+	lat.AddEntry(rata_pf,"Prediction (CR-postfit)","L")
 	lat.AddEntry(ratae_noexp,"#pm MC stat. uncert.","F")
+	lat.AddEntry(rata,"Prediction (prefit)","L")
 	lat.AddEntry(ratae, "#pm expt.","F")
 	
 	pad1 = ROOT.TPad("pad1","pad1",0,0.305,1,0.95)
@@ -209,7 +212,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	rata_r.GetXaxis().SetLabelSize(0.09)
 	rata_r.GetYaxis().SetTitleSize(0.095)
 	rata_r.GetYaxis().SetLabelSize(0.09)
-	rata_r.GetYaxis().SetTitle("(Data - bkg.)/Prediction")
+	rata_r.GetYaxis().SetTitle("(Data - bkg.) / prediction")
 	rata_r.SetMaximum(data_r_skipLastBin.GetYaxis().GetXmax())
 	rata_r.SetMinimum(max([data_r_skipLastBin.GetYaxis().GetXmin(),0]))
 	
