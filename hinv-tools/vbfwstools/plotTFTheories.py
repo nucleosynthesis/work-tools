@@ -119,12 +119,12 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 
 	
 	if pos==0: 
-	 lat = ROOT.TLegend(0.15,0.05,0.68,0.28)
+	 lat = ROOT.TLegend(0.15,0.05,0.76,0.28)
 	 lat.SetNColumns(2)
 
 	lab = tf.cat.replace("_"," ")
 	
-	lat.SetTextSize(0.04)
+	lat.SetTextSize(0.045)
 	lat.SetBorderSize(0)
 	lat.SetTextFont(42)
 	lat.AddEntry(data,"Data - bkg.","PE")
@@ -246,7 +246,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	if isPublished : tlat.DrawLatex(0.128,0.93,"#bf{CMS}")
 	else : tlat.DrawLatex(0.128,0.93,"#bf{CMS} #it{Supplementary}")
 	tlat.SetTextSize(0.042)
-	tlat.DrawLatex(0.18,0.83,clab)
+	tlat.DrawLatex(0.18,0.87,clab)
 	tlat.SetTextSize(0.032)
 	#tlat.SetTextAlign(32)
 	tlat.DrawLatex(0.71,0.93,lstr)
