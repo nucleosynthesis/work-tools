@@ -15,8 +15,6 @@ tf.ZR = "MUMU"
 tf.WR = "MUNU"
 """
 
-isPublished = True
-
 def RatioD(a,b):
   ret = a.Clone(); ret.SetName(a.GetName()+"_"+b.GetName())
   for i in range(b.GetNbinsX()): 
@@ -45,7 +43,7 @@ def getAveragePull(gr):
 	  mean += (average(gr.GetErrorYhigh(p),gr.GetErrorYlow(p)))
 	return mean/Npoints
 
-def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0): 
+def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0,isPublished=True): 
 	fdummy = ROOT.TFile.Open("%s/fitDiagnostics%s.root"%(BASE_DIRECTORY,sys.argv[1]))
 	hdummy = fdummy.Get("shapes_prefit/%s_SR/qqH_hinv"%sys.argv[1])
 	ddummy = fdummy.Get("shapes_prefit/%s_SR/data"%sys.argv[1])
@@ -119,13 +117,14 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 
 	
 	if pos==0: 
-	 lat = ROOT.TLegend(0.15,0.05,0.76,0.28)
+	 lat = ROOT.TLegend(0.15,0.05,0.78,0.28)
 	 lat.SetNColumns(2)
 
 	lab = tf.cat.replace("_"," ")
 	
-	lat.SetTextSize(0.045)
+	lat.SetTextSize(0.046)
 	lat.SetBorderSize(0)
+	lat.SetFillColor(0)
 	lat.SetTextFont(42)
 	lat.AddEntry(data,"Data - bkg.","PE")
 	lat.AddEntry(ratae_nostat, "#pm Th. uncert.","F")
@@ -246,7 +245,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 	if isPublished : tlat.DrawLatex(0.128,0.93,"#bf{CMS}")
 	else : tlat.DrawLatex(0.128,0.93,"#bf{CMS} #it{Supplementary}")
 	tlat.SetTextSize(0.042)
-	tlat.DrawLatex(0.18,0.87,clab)
+	tlat.DrawLatex(0.18,0.86,clab)
 	tlat.SetTextSize(0.032)
 	#tlat.SetTextAlign(32)
 	tlat.DrawLatex(0.71,0.93,lstr)
@@ -267,7 +266,9 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0):
 # inputs are cat ZProc, WProc, ZR, WR, ytitle, ymin, ymax, outname
 def checkLoadAndRun(year,combineleptons=False):
   file_name = "%s/fitDiagnosticsCRonlyFit.root"%(BASE_DIRECTORY)
+  isPublished=False
   if combineleptons:
+  	isPublished=True
 	if "photon" in sys.argv[2]:
 	  # better check if it makes sense in this case 
 	  if "VTR" in sys.argv[1]: 
@@ -311,7 +312,7 @@ def checkLoadAndRun(year,combineleptons=False):
 	tf.cat   = sys.argv[1]
 	tf.year = year
 
-  return tf
+  return tf,isPublished
 
 combinedleptons = False
 if (sys.argv[2]=="lepton") or (sys.argv[2]=="photon"):
@@ -335,5 +336,5 @@ if "2017" in sys.argv[1] :
  year = "2017"
  if "VTR" in sys.argv[1] : lstr = "36.7 fb^{-1} (13 TeV)"
  else : lstr = "41.5 fb^{-1} (13 TeV)"
-tf = checkLoadAndRun(year,combineleptons=(combinedleptons))
-if tf!=0 : runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos)
+tf,isPublished = checkLoadAndRun(year,combineleptons=(combinedleptons))
+if tf!=0 : runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos,isPublished)
