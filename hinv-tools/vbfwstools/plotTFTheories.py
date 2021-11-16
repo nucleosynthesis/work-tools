@@ -273,7 +273,7 @@ def checkLoadAndRun(year,combineleptons=False):
 	  # better check if it makes sense in this case 
 	  if "VTR" in sys.argv[1]: 
 	    print "No photon CR in VTR, skipping"
-	    return 0 
+	    return 0,isPublished
 	    #sys.exit("No photon CR in VTR, skipping")
 	  import plotRatiosPhotonsCombineFlavour
 	  tf = plotRatiosPhotonsCombineFlavour.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),file_name)
@@ -293,7 +293,7 @@ def checkLoadAndRun(year,combineleptons=False):
 	  # better check if it makes sense in this case 
 	  if "VTR" in sys.argv[1]: 
 	    print "No photon CR in VTR, skipping"
-	    return 0 
+	    return 0,isPublished 
 	    #sys.exit("No photon CR in VTR, skipping")
 	  import plotRatiosPhotons
 	  tf = plotRatiosPhotons.TFValidator("%s/%s.root"%(BASE_DIRECTORY,sys.argv[1]),file_name)
