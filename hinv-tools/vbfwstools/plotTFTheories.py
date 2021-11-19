@@ -166,7 +166,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0,isPublished=True):
 	ratae.SetMinimum(float(ymin))
 	ratae.SetMaximum(float(ymax))
 	#ratae.GetXaxis().SetNdivisions(010)
-	ratae.GetXaxis().SetTitle("M_{jj} (GeV)")
+	ratae.GetXaxis().SetTitle("m_{jj} (GeV)")
 
 	ratae.Draw("E2")
 	ratae_noexp.Draw("E2same")
@@ -215,7 +215,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0,isPublished=True):
 	rata_r.SetMaximum(data_r_skipLastBin.GetYaxis().GetXmax())
 	rata_r.SetMinimum(max([data_r_skipLastBin.GetYaxis().GetXmin(),0]))
 	
-	rata_r.GetXaxis().SetTitle("M_{jj} (GeV)")
+	rata_r.GetXaxis().SetTitle("m_{jj} (GeV)")
 	rata_r.Draw("AXIS")
 	data_r.Draw("PE")
 	ratae_r.Draw("E2same")
