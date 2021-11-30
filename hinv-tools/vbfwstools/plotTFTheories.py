@@ -131,7 +131,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0,isPublished=True):
 	lat.AddEntry(rata_pf,"Prediction (CR-postfit)","L")
 	lat.AddEntry(ratae_noexp,"#pm MC stat. uncert.","F")
 	lat.AddEntry(rata,"Prediction (prefit)","L")
-	lat.AddEntry(ratae, "#pm expt. uncert.","F")
+	lat.AddEntry(ratae, "#pm Expt. uncert.","F")
 	
 	pad1 = ROOT.TPad("pad1","pad1",0,0.305,1,0.95)
 	pad2 = ROOT.TPad("pad2","pad2",0,0.0,1,0.30)
