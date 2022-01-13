@@ -56,7 +56,9 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0,isPublished=True):
 
 	nbins = hdummy.GetNbinsX() 
 
-	lists_of_uncertainties = [] 
+	lists_of_uncertainties = []
+	ratio_error_bands = []
+
 	for b in range(1,nbins+1):
 	  de = tf.calcRdata(b)
 	  data.SetPoint(b-1,ddummy.GetX()[b-1],de[0])
@@ -187,6 +189,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0,isPublished=True):
 	data_r  = RatioD(data,rata)
 	rata_r  = Ratio(rata,rata)
 
+	ratio_error_bands = [ratae_r.GetBinError(b) for b in range(1,ratae_r.GetNbinsX()+1)]
 	# check if the last bin error is significantly different to the others 
 	error_rms = getAveragePull(data_r)
 	pm1 = data_r.GetN()-1
@@ -212,8 +215,12 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0,isPublished=True):
 	rata_r.GetYaxis().SetTitleSize(0.095)
 	rata_r.GetYaxis().SetLabelSize(0.09)
 	rata_r.GetYaxis().SetTitle("(Data - bkg.) / prediction")
-	rata_r.SetMaximum(data_r_skipLastBin.GetYaxis().GetXmax())
-	rata_r.SetMinimum(max([data_r_skipLastBin.GetYaxis().GetXmin(),0]))
+
+	rata_r.SetMaximum(max([data_r_skipLastBin.GetYaxis().GetXmax(),1+1.2*max(ratio_error_bands)]))
+
+	if data_r_skipLastBin.GetYaxis().GetXmin() > 0 : 
+	  rata_r.SetMinimum(min([data_r_skipLastBin.GetYaxis().GetXmin(),1-1.2*max(ratio_error_bands)]))
+	else : rata_r.SetMinimum(max([1-1.2*max(ratio_error_bands)]))
 	
 	rata_r.GetXaxis().SetTitle("m_{jj} (GeV)")
 	rata_r.Draw("AXIS")
