@@ -124,11 +124,11 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0,isPublished=True):
 
 	lab = tf.cat.replace("_"," ")
 	
-	lat.SetTextSize(0.046)
+	lat.SetTextSize(0.044)
 	lat.SetBorderSize(0)
 	lat.SetFillColor(0)
 	lat.SetTextFont(42)
-	lat.AddEntry(data,"Data - background","PE")
+	lat.AddEntry(data,"Data - bkg","PE")
 	lat.AddEntry(ratae_nostat, "#pm Theoretical uncertainty","F")
 	lat.AddEntry(rata_pf,"Prediction (CR-postfit)","L")
 	lat.AddEntry(ratae_noexp,"#pm MC statistical uncertainty","F")
