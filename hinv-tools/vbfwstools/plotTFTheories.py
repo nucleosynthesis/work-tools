@@ -119,7 +119,7 @@ def runValidator(tf,ytitle,ymin,ymax,out,lstr,clab,pos=0,isPublished=True):
 
 	
 	if pos==0: 
-	 lat = ROOT.TLegend(0.15,0.05,0.78,0.28)
+	 lat = ROOT.TLegend(0.148,0.05,0.8,0.28)
 	 lat.SetNColumns(2)
 
 	lab = tf.cat.replace("_"," ")
