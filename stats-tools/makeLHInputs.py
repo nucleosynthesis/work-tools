@@ -65,10 +65,12 @@ def makeAggregate(aggregateDict,covarianceInput,totalBackground,totalSignal,tota
                 break
             binNumAgg2 += 1
 
+        dataX = 0.  
+        dataY = 0.
         for binNum in binNums:
-            dataX = r.Double(0.)
-            dataY = r.Double(0.) 
-            totalData.GetPoint(binNum-1,dataX,dataY)
+            #totalData.GetPoint(binNum-1,dataX[0],dataY[0])
+	    dataX = totalData.GetX()[binNum-1]
+	    dataY = totalData.GetY()[binNum-1]
             aggregateBackground.AddBinContent(binNumAgg1,totalBackground.GetBinContent(binNum))
             aggregateTotal.AddBinContent(binNumAgg1,total.GetBinContent(binNum))
             aggregateData.AddBinContent(binNumAgg1,dataY)
@@ -141,9 +143,9 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
 
             #set output contents/errors + labels
             for iBinMinusOne,binLabel in enumerate(binLabelsFiltered):
-                dataX = r.Double(0.)
-                dataY = r.Double(0.) 
-                totalData.GetPoint(binDict[binLabel]-1,dataX,dataY)
+                #totalData.GetPoint(binDict[binLabel]-1,dataX[0],dataY[0])
+	        dataX = totalData.GetX()[binDict[binLabel]-1]
+	        dataY = totalData.GetY()[binDict[binLabel]-1]
 
                 # All bin contents are normalized to bin width
                 # -> We invert this here so that bin contents are absolute yields
