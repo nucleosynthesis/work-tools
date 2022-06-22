@@ -12,5 +12,3 @@ git config core.sparsecheckout true;
  echo stats-tools/convertSLRootToPython.py >> .git/info/sparse-checkout
 git pull origin master
 cd stats-tools
-git fetch origin
-git checkout CMSRecast
