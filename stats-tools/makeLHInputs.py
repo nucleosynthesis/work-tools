@@ -7,6 +7,8 @@ import fnmatch
 import pickle
 import aggregateCFG
 from array import array
+from collections import OrderedDict as odict
+
 
 def parse_args():
 
@@ -25,7 +27,8 @@ def parse_args():
     return options 
 def makeAggregate(aggregateDict,covarianceInput,totalBackground,totalSignal,total,totalData):
     binLabels = [covarianceInput.GetXaxis().GetBinLabel(iBin) for iBin in range(1,covarianceInput.GetNbinsX()+1)]
-    binLabelsAggregate = {}
+    # binLabelsAggregate = {}
+    binLabelsAggregate = odict()
     for aggregateBinLabel,aggregateList in aggregateDict.iteritems():
         binLabelsAggregate[aggregateBinLabel] = []
         for binIndexMinusOne,binLabel in enumerate(binLabels):
@@ -115,10 +118,14 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
         total = iFile.Get("shapes_{0}/total_overall".format(whichFit))
         totalData = iFile.Get("shapes_{0}/total_data".format(whichFit))
         totalWidth = iFile.Get("shapes_{0}/total_bin_width".format(whichFit))
-        totalSignal.SetName("signalTemp")
+        if totalSignal:
+            totalSignal.SetName("signalTemp")
 
         #make restricted set of bins based on filters + thresh
-        binLabels = [covarianceInput.GetXaxis().GetBinLabel(iBin) for iBin in range(1,covarianceInput.GetNbinsX()+1)]
+        if covarianceInput:
+            binLabels = [covarianceInput.GetXaxis().GetBinLabel(iBin) for iBin in range(1,covarianceInput.GetNbinsX()+1)]
+        else:
+            binLabels =[]
         binLabelsFiltered = []
         binDict = {}
         if config:
@@ -149,7 +156,10 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
 
                 # All bin contents are normalized to bin width
                 # -> We invert this here so that bin contents are absolute yields
-                bin_width = totalWidth.GetBinContent(binDict[binLabel])
+                if totalWidth:
+                    bin_width = totalWidth.GetBinContent(binDict[binLabel])
+                else:
+                    bin_width = 1.0  # No histogram total_bin_width in fitDiagnosticsTest.root
                 outData.SetBinContent(iBinMinusOne+1, dataY*bin_width)
                 outTotal.SetBinError(iBinMinusOne+1,total.GetBinError(binDict[binLabel])*bin_width)
                 outTotal.SetBinContent(iBinMinusOne+1,total.GetBinContent(binDict[binLabel])*bin_width)
@@ -166,8 +176,12 @@ def main(filterStrings,inFile,outFileName,whichFits,threshold,config):
                 outCovar.GetYaxis().SetBinLabel(iBinMinusOne+1,binLabel)
                 for jBinMinusOne,binLabel2 in enumerate(binLabelsFiltered):
                     # The covariance is also bin width normalized
-                    bin_width_2 =  totalWidth.GetBinContent(binDict[binLabel2])
-                    cov = covarianceInput.GetBinContent(binDict[binLabel],binDict[binLabel2]) * bin_width * bin_width_2
+                    if totalWidth:
+                        bin_width_2 =  totalWidth.GetBinContent(binDict[binLabel2])
+                    else:
+                        bin_width_2 = 1.0  # No histogram total_bin_width in fitDiagnosticsTest.root
+                    if covarianceInput:
+                        cov = covarianceInput.GetBinContent(binDict[binLabel],binDict[binLabel2]) * bin_width * bin_width_2
                     outCovar.SetBinContent(iBinMinusOne+1,jBinMinusOne+1,cov)
         iFile.Close()
         #write it!
